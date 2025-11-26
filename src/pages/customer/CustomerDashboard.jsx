@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from "react";
 import AmenitiesCard from "../../components/AmenitiesCard";
-import { useAuth } from "../AuthContext"; // Use the correct AuthContext path
+import Header from "../../components/Header";
+import Footer from "../../components/Footer"; // ADD FOOTER IMPORT
+import { useAuth } from "../AuthContext";
 import api from "../../config/axios"; 
 import { useNavigate } from "react-router-dom";
-import { Facebook, Instagram, Twitter, LogOut, Eye, Calendar, Menu, X } from 'lucide-react'; 
+import { Facebook, Instagram, Twitter, LogOut, Eye, Calendar } from 'lucide-react'; 
 
 const CustomerDashboard = () => {
   const [amenities, setAmenities] = useState([]);
   const [filteredAmenities, setFilteredAmenities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // STATE FOR LOGOUT MODAL
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pageLoad, setPageLoad] = useState(true);
-  const [activeSection, setActiveSection] = useState('home');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // STATE FOR HAMBURGER MENU
   
   const [filters, setFilters] = useState({
     availability: 'any',
@@ -34,18 +34,14 @@ const CustomerDashboard = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleNavigation = (section) => {
-    setActiveSection(section);
-    setIsMobileMenuOpen(false); // Close menu after clicking link
-    switch(section) {
-      case 'home': window.scrollTo({ top: 0, behavior: 'smooth' }); break;
-      case 'amenities': navigate('/amenities'); break;
-      case 'reservations': navigate('/reservations'); break;
-      case 'feedback': navigate('/feedback'); break;
-      case 'contact': navigate('/contact'); break;
-      default: break;
-    }
+  // LOGOUT HANDLERS
+  const handleLogoutClick = () => setShowLogoutConfirm(true);
+  const handleConfirmLogout = () => { 
+    logout(); 
+    navigate('/'); 
+    setShowLogoutConfirm(false); 
   };
+  const handleCancelLogout = () => setShowLogoutConfirm(false);
 
   const fetchAmenities = async () => {
     try {
@@ -56,7 +52,6 @@ const CustomerDashboard = () => {
       
       const dataWithImages = response.data.map(item => ({
         ...item,
-        // IMAGE FIX: Construct full URL using ENV
         image: item.image ? `${backendUrl}/uploads/am_images/${item.image}` : null
       }));
 
@@ -122,17 +117,12 @@ const CustomerDashboard = () => {
     navigate('/reservations', { state: { selectedAmenity: amenity } });
   };
 
-  // LOGOUT HANDLERS (Same as OwnerDashboard)
-  const handleLogoutClick = () => setShowLogoutConfirm(true);
-  const handleConfirmLogout = () => { logout(); navigate('/'); setShowLogoutConfirm(false); }; // Uses secure logout()
-  const handleCancelLogout = () => setShowLogoutConfirm(false);
-
   const activeFilterCount = Object.values(filters).filter(filter => filter !== 'any' && filter !== '').length;
 
   return (
     <div className={`min-h-screen flex flex-col font-body transition-all duration-500 ${pageLoad ? 'opacity-0' : 'opacity-100'}`}>
       
-      {/* Logout Confirmation Modal (SECURE) */}
+      {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-4 transform transition-all duration-300 scale-100">
@@ -151,80 +141,8 @@ const CustomerDashboard = () => {
         </div>
       )}
 
-      {/* --- NAVBAR --- */}
-      <nav className="bg-white py-3 md:py-4 shadow-sm relative z-20 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          
-          {/* Logo & Hamburger Container */}
-          <div className="flex items-center gap-3">
-            {/* Mobile Menu Button (Visible on lg and below) */}
-            <button 
-                className="lg:hidden text-gray-600 hover:text-lp-orange transition-colors"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-lp-orange rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">LP</div>
-                <span className="text-lg font-bold text-lp-dark font-header tracking-tight truncate">La Piscina IRMS</span>
-            </div>
-          </div>
-
-          {/* Desktop Links (Hidden on Mobile) */}
-          <div className="hidden lg:flex space-x-8">
-            {['Home', 'Amenities', 'Reservations', 'Feedback', 'Contact'].map((item) => (
-              <button
-                key={item}
-                onClick={() => handleNavigation(item.toLowerCase())}
-                className={`text-sm font-medium transition-colors ${
-                  activeSection === item.toLowerCase() ? 'text-lp-orange border-b-2 border-lp-orange pb-1' : 'text-gray-600 hover:text-lp-orange'
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          {/* User & Logout Section */}
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="flex items-center gap-2 text-right">
-                 <div className="w-8 h-8 bg-lp-orange rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
-                   {user?.username?.charAt(0).toUpperCase()}
-                 </div>
-                 <div className="hidden lg:block leading-tight">
-                    <p className="text-sm font-bold text-gray-800">{user?.username}</p>
-                    <p className="text-[10px] text-gray-500">Welcome back!</p>
-                 </div>
-              </div>
-            )}
-            <button onClick={handleLogoutClick} className="flex items-center gap-2 px-3 py-2 bg-lp-orange text-white rounded-lg hover:bg-lp-orange-hover transition text-sm font-medium">
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        </div>
-
-        {/* --- MOBILE MENU DROPDOWN --- */}
-        {isMobileMenuOpen && (
-            <div className="lg:hidden absolute top-full left-0 w-full bg-white border-t border-gray-100 shadow-lg z-50">
-                <div className="flex flex-col py-2">
-                    {['Home', 'Amenities', 'Reservations', 'Feedback', 'Contact'].map((item) => (
-                    <button
-                        key={item}
-                        onClick={() => handleNavigation(item.toLowerCase())}
-                        className={`px-6 py-3 text-left w-full text-sm font-medium hover:bg-gray-50 transition-colors ${
-                        activeSection === item.toLowerCase() ? 'text-lp-orange bg-orange-50 border-l-4 border-lp-orange' : 'text-gray-600'
-                        }`}
-                    >
-                        {item}
-                    </button>
-                    ))}
-                </div>
-            </div>
-        )}
-      </nav>
+      {/* Header Component */}
+      <Header user={user} onLogout={handleLogoutClick} />
 
       {/* --- HERO SECTION --- */}
       <div className="relative flex-grow flex items-center justify-center min-h-[90vh] md:min-h-screen">
@@ -240,7 +158,7 @@ const CustomerDashboard = () => {
                 La Piscina De Conception Resort
             </h1>
             <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto mb-8 md:mb-12 drop-shadow-sm px-2">
-                Enjoy a relaxing stay that’s affordable but still feels special. Great rooms, nice amenities, and easy bookings—all for you.
+                Enjoy a relaxing stay that's affordable but still feels special. Great rooms, nice amenities, and easy bookings—all for you.
             </p>
 
             {/* --- FILTER BOX --- */}
@@ -293,10 +211,10 @@ const CustomerDashboard = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <button onClick={() => handleNavigation('amenities')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
+                    <button onClick={() => navigate('/amenities')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
                         <Eye size={16} /> View Amenities
                     </button>
-                    <button onClick={() => handleNavigation('reservations')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
+                    <button onClick={() => navigate('/reservations')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
                         <Calendar size={16} /> Make Reservations
                     </button>
                 </div>
@@ -304,7 +222,7 @@ const CustomerDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content & Footer */}
+      {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
         <section className="mb-12">
           <div className="text-center mb-8">
@@ -331,37 +249,9 @@ const CustomerDashboard = () => {
         </section>
       </main>
 
-      <footer className="bg-lp-dark text-white py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold font-header text-lp-orange">Visit Us</h3>
-              <p>Barangay Gumamela, Balayan, Batangas</p>
-              <p>+63 (912) 345-6789</p>
-              <p>info@lapiscinaconception.com</p>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold font-header text-lp-orange">Quick Links</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {['Home', 'Amenities', 'Reservations', 'Feedback', 'Contact'].map(link => (
-                    <button key={link} onClick={() => handleNavigation(link.toLowerCase())} className="text-left hover:text-lp-orange">{link}</button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold font-header text-lp-orange">Follow Us</h3>
-              <div className="flex space-x-4">
-                  <Facebook className="w-5 h-5 hover:text-lp-orange cursor-pointer" />
-                  <Instagram className="w-5 h-5 hover:text-lp-orange cursor-pointer" />
-                  <Twitter className="w-5 h-5 hover:text-lp-orange cursor-pointer" />
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-xs text-gray-400">
-            © {new Date().getFullYear()} La Piscina De Conception Resort. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      {/* Footer Component */}
+      <Footer />
+
     </div>
   );
 };
