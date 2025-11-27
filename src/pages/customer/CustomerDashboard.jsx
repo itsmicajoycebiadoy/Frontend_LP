@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import AmenitiesCard from "../../components/AmenitiesCard";
 import Header from "../../components/Header";
-import Footer from "../../components/Footer"; // ADD FOOTER IMPORT
+import Footer from "../../components/Footer";
 import { useAuth } from "../AuthContext";
 import api from "../../config/axios"; 
 import { useNavigate } from "react-router-dom";
-import { Facebook, Instagram, Twitter, LogOut, Eye, Calendar } from 'lucide-react'; 
+import { Facebook, Instagram, Twitter, LogOut, Eye, Calendar, ChevronDown } from 'lucide-react'; 
 
 const CustomerDashboard = () => {
   const [amenities, setAmenities] = useState([]);
@@ -16,10 +16,10 @@ const CustomerDashboard = () => {
   const [pageLoad, setPageLoad] = useState(true);
   
   const [filters, setFilters] = useState({
+    type: 'any',
     availability: 'any',
     capacity: 'any',
-    priceRange: 'any',
-    search: ''
+    priceRange: 'any'
   });
   
   const { user, logout } = useAuth();
@@ -75,33 +75,52 @@ const CustomerDashboard = () => {
 
   const applyFilters = () => {
     let filtered = [...amenities];
-    if (filters.search) {
-      filtered = filtered.filter(amenity =>
-        amenity.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        amenity.description.toLowerCase().includes(filters.search.toLowerCase()) ||
-        amenity.type.toLowerCase().includes(filters.search.toLowerCase())
+    
+    // Type filter
+    if (filters.type !== 'any') {
+      filtered = filtered.filter(amenity => 
+        amenity.type.toLowerCase() === filters.type.toLowerCase()
       );
     }
+    
+    // Availability filter
     if (filters.availability !== 'any') {
       if (filters.availability === 'available') filtered = filtered.filter(amenity => amenity.available === 'Yes');
       else if (filters.availability === 'unavailable') filtered = filtered.filter(amenity => amenity.available === 'No');
     }
+    
+    // Capacity filter - UPDATED TO MATCH YOUR DATA
     if (filters.capacity !== 'any') {
       switch (filters.capacity) {
-        case '1-5': filtered = filtered.filter(amenity => amenity.capacity >= 1 && amenity.capacity <= 5); break;
-        case '6-10': filtered = filtered.filter(amenity => amenity.capacity >= 6 && amenity.capacity <= 10); break;
-        case '10+': filtered = filtered.filter(amenity => amenity.capacity > 10); break;
+        case '1-4': 
+          filtered = filtered.filter(amenity => amenity.capacity >= 1 && amenity.capacity <= 4); 
+          break;
+        case '5-10': 
+          filtered = filtered.filter(amenity => amenity.capacity >= 5 && amenity.capacity <= 10); 
+          break;
+        case '11+': 
+          filtered = filtered.filter(amenity => amenity.capacity >= 11); 
+          break;
         default: break;
       }
     }
+    
+    // Price range filter - UPDATED TO MATCH YOUR DATA
     if (filters.priceRange !== 'any') {
       switch (filters.priceRange) {
-        case '0-200': filtered = filtered.filter(amenity => amenity.price >= 0 && amenity.price <= 200); break;
-        case '201-1000': filtered = filtered.filter(amenity => amenity.price >= 201 && amenity.price <= 1000); break;
-        case '1001+': filtered = filtered.filter(amenity => amenity.price > 1000); break;
+        case '0-500': 
+          filtered = filtered.filter(amenity => amenity.price >= 0 && amenity.price <= 500); 
+          break;
+        case '501-1000': 
+          filtered = filtered.filter(amenity => amenity.price >= 501 && amenity.price <= 1000); 
+          break;
+        case '1001+': 
+          filtered = filtered.filter(amenity => amenity.price > 1000); 
+          break;
         default: break;
       }
     }
+    
     setFilteredAmenities(filtered);
   };
 
@@ -110,14 +129,21 @@ const CustomerDashboard = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ availability: 'any', capacity: 'any', priceRange: 'any', search: '' });
+    setFilters({ type: 'any', availability: 'any', capacity: 'any', priceRange: 'any' });
   };
 
   const handleBookAmenity = (amenity) => {
     navigate('/reservations', { state: { selectedAmenity: amenity } });
   };
 
-  const activeFilterCount = Object.values(filters).filter(filter => filter !== 'any' && filter !== '').length;
+  const scrollToAmenities = () => {
+    const amenitiesSection = document.querySelector('main');
+    if (amenitiesSection) {
+      amenitiesSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const activeFilterCount = Object.values(filters).filter(filter => filter !== 'any').length;
 
   return (
     <div className={`min-h-screen flex flex-col font-body transition-all duration-500 ${pageLoad ? 'opacity-0' : 'opacity-100'}`}>
@@ -172,13 +198,17 @@ const CustomerDashboard = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    <input 
-                        type="text" 
-                        placeholder="Search..." 
+                    <select 
                         className="w-full py-2 px-3 rounded-md bg-white/95 border-none focus:ring-2 focus:ring-lp-orange text-gray-800 text-sm shadow-sm"
-                        value={filters.search}
-                        onChange={(e) => handleFilterChange('search', e.target.value)}
-                    />
+                        value={filters.type}
+                        onChange={(e) => handleFilterChange('type', e.target.value)}
+                    >
+                        <option value="any">All Types</option>
+                        <option value="Table">Table</option>
+                        <option value="Kubo">Kubo</option>
+                        <option value="Cabin">Cabin</option>
+                        <option value="Others">Others</option>
+                    </select>
                     <select 
                         className="w-full py-2 px-3 rounded-md bg-white/95 border-none focus:ring-2 focus:ring-lp-orange text-gray-800 text-sm shadow-sm"
                         value={filters.availability}
@@ -194,9 +224,9 @@ const CustomerDashboard = () => {
                         onChange={(e) => handleFilterChange('capacity', e.target.value)}
                     >
                         <option value="any">Any Capacity</option>
-                        <option value="1-5">Small (1-5)</option>
-                        <option value="6-10">Medium (6-10)</option>
-                        <option value="10+">Large (11+)</option>
+                        <option value="1-4">Small (1-4)</option>
+                        <option value="5-10">Medium (5-10)</option>
+                        <option value="11+">Large (11+)</option>
                     </select>
                     <select 
                         className="w-full py-2 px-3 rounded-md bg-white/95 border-none focus:ring-2 focus:ring-lp-orange text-gray-800 text-sm shadow-sm"
@@ -204,20 +234,22 @@ const CustomerDashboard = () => {
                         onChange={(e) => handleFilterChange('priceRange', e.target.value)}
                     >
                         <option value="any">Any Price</option>
-                        <option value="0-200">₱0 - ₱200</option>
-                        <option value="201-1000">₱201 - ₱1,000</option>
+                        <option value="0-500">₱0 - ₱500</option>
+                        <option value="501-1000">₱501 - ₱1,000</option>
                         <option value="1001+">₱1,001+</option>
                     </select>
                 </div>
+            </div>
 
-                <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <button onClick={() => navigate('/amenities')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
-                        <Eye size={16} /> View Amenities
-                    </button>
-                    <button onClick={() => navigate('/reservations')} className="flex items-center justify-center gap-2 px-6 py-2 rounded-md text-sm font-medium border border-white/30 bg-white/10 text-white hover:bg-lp-orange hover:border-lp-orange backdrop-blur-sm">
-                        <Calendar size={16} /> Make Reservations
-                    </button>
-                </div>
+            {/* Down Arrow Button */}
+            <div className="mt-8 flex justify-center">
+              <button 
+                onClick={scrollToAmenities}
+                className="flex flex-col items-center text-white hover:text-lp-orange transition-colors duration-300"
+              >
+                <span className="text-sm mb-1 opacity-80">View Featured Amenities</span>
+                <ChevronDown size={24} className="opacity-80" />
+              </button>
             </div>
         </div>
       </div>
@@ -249,7 +281,7 @@ const CustomerDashboard = () => {
         </section>
       </main>
 
-      {/* Footer Component */}
+      {/* Footer Component */}  
       <Footer />
 
     </div>
