@@ -1,6 +1,5 @@
 
 
-
 import React, { useState } from "react";
 import { useAuth } from "../AuthContext";
 import Header from "../../components/Header.jsx";
@@ -79,7 +78,13 @@ const Feedback = () => {
     return (total / reviews.length).toFixed(1);
   };
 
-  
+  const handleRatingChange = (category, value) => {
+    setFormData(prev => ({
+      ...prev,
+      ratings: { ...prev.ratings, [category]: value }
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const unrated = Object.values(formData.ratings).some(r => r === 0);
@@ -252,7 +257,13 @@ const Feedback = () => {
                       disabled={isSubmitting}
                       className="w-full bg-[#ea580c] hover:bg-[#c2410c] text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl hover:shadow-orange-200 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
+                      {isSubmitting ? (
+                        <span className="animate-pulse">Processing...</span>
+                      ) : (
+                        <>
                           Submit Review <Send size={18} />
+                        </>
+                      )}
                     </button>
                     
                     <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400 opacity-80">
