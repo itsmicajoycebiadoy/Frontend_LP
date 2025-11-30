@@ -208,11 +208,29 @@ const Amenities = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-lp-dark font-header mb-4">All Amenities</h2>
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">Explore our complete range of facilities designed for your comfort and enjoyment.</p>
           </div>
+
+          {loading && <div className="text-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lp-orange mx-auto"></div><p className="mt-4 text-gray-600">Loading...</p></div>}
+          
+          {error && <div className="text-center py-12"><div className="text-red-500 text-4xl mb-2">⚠️</div><p className="text-gray-600 mb-4">{error}</p><button onClick={fetchAmenities} className="bg-lp-orange text-white px-6 py-2 rounded-lg">Try Again</button></div>}
+
+          {!loading && !error && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAmenities.map((amenity) => ( 
+                  <AmenitiesCard key={amenity.id} amenity={amenity} onBook={handleBookAmenity} />
+                ))}
+              </div>
+              {filteredAmenities.length === 0 && amenities.length > 0 && (
+                <div className="text-center py-12"><p className="text-gray-500 mb-4">No matches found.</p><button onClick={clearFilters} className="bg-lp-orange text-white px-6 py-2 rounded-lg">Clear Filters</button></div>
+              )}
+            </>
+          )}
         </section>
       </main>
 
       {/* Footer */}  
       <Footer />
+
     </div>
   );
 };
