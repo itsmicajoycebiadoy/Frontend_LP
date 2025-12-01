@@ -1,5 +1,3 @@
-
-
 import React from "react";
 import { useAuth } from "../AuthContext";
 import Header from "../../components/Header.jsx";
@@ -102,7 +100,21 @@ const Contact = () => {
         </div>
       </div>
 
-    
+      {/* GOOGLE MAPS SECTION */}
+      <section className="w-full h-[450px] bg-slate-200">
+        <iframe 
+          title="Resort Location"
+          src={GMAPS_LINK}
+          width="100%" 
+          height="100%" 
+          style={{ border: 0 }} 
+          allowFullScreen="" 
+          loading="lazy" 
+          referrerPolicy="no-referrer-when-downgrade"
+          className="filter grayscale hover:grayscale-0 transition-all duration-700"
+        ></iframe>
+      </section>
+
       <Footer />
     </div>
   );
