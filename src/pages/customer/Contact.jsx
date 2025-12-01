@@ -49,6 +49,18 @@ const Contact = () => {
 
       {/* HERO SECTION */}
       <section
+<<<<<<< HEAD
+        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImageUrl})`,
+        }}
+      >
+        <div className="container mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-3xl md:text-6xl font-bold text-white font-header mb-4">
+            Contact Us
+          </h2>
+          <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto mb-8">
+=======
         className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20 relative"
         style={{
           backgroundImage: `url(${backgroundImageUrl})`,
@@ -60,11 +72,16 @@ const Contact = () => {
             Contact Us
           </h2>
           <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto drop-shadow-sm font-light">
+>>>>>>> 42251b38d3904704c454d8fb241cf1e5a7ca316d
             We are here to assist you with your inquiries and reservations.
           </p>
         </div>
       </section>
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 42251b38d3904704c454d8fb241cf1e5a7ca316d
       {/* MAIN CONTENT */}
       <div className="flex-grow container mx-auto px-4 sm:px-6 py-16">
         <div className="max-w-5xl mx-auto">
