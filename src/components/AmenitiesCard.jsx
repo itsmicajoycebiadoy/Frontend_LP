@@ -4,7 +4,10 @@ const AmenitiesCard = ({ amenity, onBook }) => {
   // --- FIX IS HERE ---
   // Gumawa tayo ng variable para siguraduhin na boolean ang comparison.
   // Kung ang string ay "Yes", true. Kung "No", false.
-  const isAvailable = amenity.available === 'Yes'; 
+  const isAvailable = 
+    amenity.available === 'Yes' || 
+    amenity.available === 'yes' || 
+    amenity.available === true;
 
   const handleImageError = (e) => {
     e.target.src = '/images/default-amenity.jpg';
@@ -26,7 +29,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
             ? 'bg-lp-orange text-white' 
             : 'bg-red-500 text-white'
         } px-3 py-1 rounded-full text-xs font-semibold shadow-md`}>
-          {isAvailable ? 'Available' : 'Unavailable'}
+          {isAvailable ? 'Available' : 'Fully Booked'}
         </div>
         
         {/* Type Badge */}
@@ -43,7 +46,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
         </h3>
         
         {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-10">
           {amenity.description}
         </p>
         

@@ -10,7 +10,7 @@ const Header = ({ user, onLogout }) => {
   // Extract active section from current path
   const getActiveSection = () => {
     const path = location.pathname;
-    if (path === '/') return 'home';
+    if (path === '/customer') return 'home'; // Updated to match your route
     if (path.includes('/amenities')) return 'amenities';
     if (path.includes('/reservations')) return 'reservations';
     if (path.includes('/feedback')) return 'feedback';
@@ -23,9 +23,26 @@ const Header = ({ user, onLogout }) => {
   const handleNavigation = (section) => {
     setIsMobileMenuOpen(false);
     
+    // Don't navigate if we're already on the target page
+    const currentPath = location.pathname;
+    const targetPaths = {
+      home: ['/customer'], // Updated to match your route
+      amenities: ['/amenities'],
+      reservations: ['/reservations'],
+      feedback: ['/feedback'],
+      contact: ['/contact']
+    };
+
+    if (targetPaths[section]?.includes(currentPath)) {
+      return;
+    }
+    
     switch(section) {
       case 'home':
-        navigate('/');
+        // Navigate to /customer instead of /customerdashboard
+        if (currentPath !== '/customer') {
+          navigate('/customer');
+        }
         break;
       case 'amenities':
         navigate('/amenities');
@@ -40,7 +57,9 @@ const Header = ({ user, onLogout }) => {
         navigate('/contact');
         break;
       default:
-        navigate('/');
+        if (currentPath !== '/customer') {
+          navigate('/customer');
+        }
     }
   };
 
@@ -53,8 +72,8 @@ const Header = ({ user, onLogout }) => {
   const navItems = ['Home', 'Amenities', 'Reservations', 'Feedback', 'Contact'];
 
   return (
-    <nav className="bg-white py-3 md:py-4 shadow-sm relative z-20 flex-shrink-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+    <nav className="bg-white py-3 md:py-4 shadow-sm relative z-20 flex-shrink-0 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center w-full">
         
         {/* Logo & Hamburger Container */}
         <div className="flex items-center gap-3">
