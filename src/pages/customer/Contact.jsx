@@ -1,3 +1,4 @@
+day 6
 
 import React from "react";
 import { useAuth } from "../AuthContext";
@@ -68,9 +69,40 @@ const Contact = () => {
 
       {/* MAIN CONTENT */}
       <div className="flex-grow container mx-auto px-4 sm:px-6 py-16">
-        
+        <div className="max-w-5xl mx-auto">
+          
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            {/* Contact Cards */}
+            {contactInfo.map((item, index) => (
+              <div key={index} className="bg-white p-8 rounded-none shadow-sm hover:shadow-md transition-shadow border border-gray-100 flex items-start gap-6">
+                <div className={`w-12 h-12 ${item.iconColor} flex items-center justify-center text-white flex-shrink-0`}>
+                  {item.icon}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 font-header">{item.title}</h3>
+                  {item.details.map((d, i) => (
+                    <p key={i} className="text-gray-600 font-medium">{d}</p>
+                  ))}
+                  <p className="text-xs text-gray-400 mt-2 font-light italic">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Emergency Contact Box */}
+          <div className="bg-orange-50 border border-orange-100 p-6 rounded-none text-center max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-2 text-lp-orange">
+              <Shield size={20} />
+              <h3 className="font-bold text-lg font-header">Emergency Contact</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-1">For urgent matters after hours, please call:</p>
+            <p className="text-2xl font-bold text-gray-800 tracking-wide">+63 (920) 123-4567</p>
+          </div>
+
+        </div>
       </div>
 
+    
       <Footer />
     </div>
   );
