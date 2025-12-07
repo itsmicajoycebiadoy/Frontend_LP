@@ -47,35 +47,35 @@ const Contact = () => {
     <div className="min-h-screen bg-lp-light-bg flex flex-col font-body">
       <Header user={user} />
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - EDGE TO EDGE */}
       <section
-        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20"
+        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20 w-full"
         style={{
-          backgroundImage: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImageUrl}),
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImageUrl})`,
         }}
       >
-        <div className="container mx-auto px-4 sm:px-6 text-center">
+        <div className="text-center px-4">
           <h2 className="text-3xl md:text-6xl font-bold text-white font-header mb-4">
             Contact Us
           </h2>
           <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto mb-8">
-            We are here to assist you with your inquiries and reservations.
+            We are here to assist you with your inquiries
           </p>
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-grow container mx-auto px-4 sm:px-6 py-16">
-        <div className="max-w-5xl mx-auto">
+      {/* MAIN CONTENT - EDGE TO EDGE */}
+      <div className="flex-grow w-full px-4 sm:px-6 py-16">
+        <div className="w-full">
           
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            {/* Contact Cards */}
+          {/* Contact Cards Grid - EDGE TO EDGE */}
+          <div className="grid md:grid-cols-2 gap-8 mb-12 w-full">
             {contactInfo.map((item, index) => (
-              <div key={index} className="bg-white p-8 rounded-none shadow-sm hover:shadow-md transition-shadow border border-gray-100 flex items-start gap-6">
+              <div key={index} className="bg-white p-8 shadow-sm hover:shadow-md transition-shadow border border-gray-100 flex items-start gap-6 w-full">
                 <div className={`w-12 h-12 ${item.iconColor} flex items-center justify-center text-white flex-shrink-0`}>
                   {item.icon}
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="text-xl font-bold text-gray-900 mb-2 font-header">{item.title}</h3>
                   {item.details.map((d, i) => (
                     <p key={i} className="text-gray-600 font-medium">{d}</p>
@@ -86,8 +86,8 @@ const Contact = () => {
             ))}
           </div>
 
-          {/* Emergency Contact Box */}
-          <div className="bg-orange-50 border border-orange-100 p-6 rounded-none text-center max-w-2xl mx-auto">
+          {/* Emergency Contact Box - EDGE TO EDGE */}
+          <div className="bg-orange-50 border border-orange-100 p-6 text-center w-full">
             <div className="flex items-center justify-center gap-2 mb-2 text-lp-orange">
               <Shield size={20} />
               <h3 className="font-bold text-lg font-header">Emergency Contact</h3>
@@ -99,8 +99,8 @@ const Contact = () => {
         </div>
       </div>
 
-      {/* GOOGLE MAPS SECTION */}
-      <section className="w-full h-[450px] bg-slate-200">
+      {/* GOOGLE MAPS SECTION - EDGE TO EDGE */}
+      <section className="w-full h-[450px]">
         <iframe 
           title="Resort Location"
           src={GMAPS_LINK}
@@ -110,7 +110,7 @@ const Contact = () => {
           allowFullScreen="" 
           loading="lazy" 
           referrerPolicy="no-referrer-when-downgrade"
-          className="filter grayscale hover:grayscale-0 transition-all duration-700"
+          className="w-full h-full filter grayscale hover:grayscale-0 transition-all duration-700"
         ></iframe>
       </section>
 
