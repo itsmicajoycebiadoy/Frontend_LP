@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../config/axios'; // Centralized API
-import { LogOut, Menu, X } from 'lucide-react'; // ADDED Menu, X
+import { useNavigate } from 'react-router-dom';
+import api from '../../config/axios'; 
+import { LogOut, Menu, X } from 'lucide-react';
 import OwnerSales from './OwnerSales';
 import OwnerFeedback from './OwnerFeedback';
 import OwnerAmenities from './OwnerAmenities';
-import { useAuth } from '../AuthContext'; // Import useAuth
+import { useAuth } from '../AuthContext'; 
+
 
 const OwnerDashboard = () => {
-  const { user, logout } = useAuth(); // CRITICAL: Get user and secure logout from context
+  const { user, logout } = useAuth(); 
+  const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState('overview');
+  // UPDATED: Default tab is now 'sales' since overview is gone
+  const [activeTab, setActiveTab] = useState('sales');
   const [loading, setLoading] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // NEW STATE FOR HAMBURGER
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // NEW STATE FOR LOGOUT MODAL
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); 
   
   // Sales data
   const [salesData, setSalesData] = useState([]);
@@ -34,18 +38,18 @@ const OwnerDashboard = () => {
   const [chartType, setChartType] = useState('bar');
   const [feedbackFilter, setFeedbackFilter] = useState('all');
 
-  // CRITICAL: Check if user is authenticated (from context)
+  // CRITICAL: Check if user is authenticated
   useEffect(() => {
     if (!user) { 
-      window.location.href = '/';
+      navigate('/', { replace: true });
     } else if (user.role !== 'owner') {
-        window.location.href = `/${user.role}`;
+      navigate(`/${user.role}`, { replace: true });
     }
     
-    if (user) {
+    if (user && user.role === 'owner') {
         fetchDashboardData();
     }
-  }, [user, dateRange, feedbackFilter]);
+  }, [user, dateRange, feedbackFilter, navigate]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -67,7 +71,6 @@ const OwnerDashboard = () => {
       const response = await api.get("/api/owner/sales", {
         params: { startDate: dateRange.startDate, endDate: dateRange.endDate }
       });
-      // ... (rest of sales logic)
       const sales = response.data.sales || [];
       setSalesData(sales);
       const total = sales.reduce((sum, sale) => sum + Number(sale.amount || 0), 0);
@@ -85,7 +88,6 @@ const OwnerDashboard = () => {
       const response = await api.get('/api/owner/feedback', {
         params: { startDate: dateRange.startDate, endDate: dateRange.endDate, filter: feedbackFilter }
       });
-      // ... (rest of feedback logic)
       const feedback = response.data.feedback || [];
       setFeedbackData(feedback);
       const stats = feedback.reduce((acc, fb) => { if (fb.rating >= 4) acc.positive++; else if (fb.rating <= 2) acc.negative++; else acc.neutral++; return acc; }, { positive: 0, negative: 0, neutral: 0 });
@@ -109,9 +111,11 @@ const OwnerDashboard = () => {
   // LOGOUT HANDLERS
   const handleLogoutClick = () => setShowLogoutConfirm(true);
   const handleCancelLogout = () => setShowLogoutConfirm(false);
+  
   const handleConfirmLogout = () => { 
-    logout(); // Calls secure logout function from AuthContext
+    logout(); 
     setShowLogoutConfirm(false);
+    navigate('/');
   };
 
 
@@ -128,12 +132,15 @@ const OwnerDashboard = () => {
   
   if (!user) return null;
 
+  // Tabs list (Updated: removed 'overview')
+  const tabs = ['sales', 'feedback', 'amenities'];
+
   return (
     <div className="min-h-screen bg-lp-light-bg">
       
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm ">
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm mx-4">
             <div className="text-center">
               <LogOut className="w-12 h-12 text-lp-orange mx-auto mb-4" />
@@ -149,8 +156,8 @@ const OwnerDashboard = () => {
       )}
 
       {/* --- HEADER (Logo, User, Logout) --- */}
-      <header className="bg-white shadow-sm relative z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white relative z-20">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             
             <div className="flex items-center space-x-3">
@@ -202,7 +209,7 @@ const OwnerDashboard = () => {
           
           {/* Desktop Tabs (Large Screens Only) */}
           <div className="hidden lg:flex space-x-8">
-            {['overview', 'sales', 'feedback', 'amenities'].map(tab => (
+            {tabs.map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -220,7 +227,7 @@ const OwnerDashboard = () => {
           {/* Mobile Menu Dropdown (Visible on Mobile/Tablet) */}
           {isMobileMenuOpen && (
              <div className="lg:hidden absolute top-full left-0 w-full bg-white border-t border-gray-100 shadow-lg z-50">
-                {['overview', 'sales', 'feedback', 'amenities'].map(tab => (
+                {tabs.map(tab => (
                     <button
                         key={tab}
                         onClick={() => {setActiveTab(tab); setIsMobileMenuOpen(false);}}
@@ -238,16 +245,9 @@ const OwnerDashboard = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'overview' && (
-          <OwnerOverview 
-            totalRevenue={totalRevenue}
-            salesData={salesData}
-            feedbackData={feedbackData}
-            salesByService={salesByService}
-            feedbackStats={feedbackStats}
-          />
-        )}
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* REMOVED: Overview Section */}
         
         {activeTab === 'sales' && (
           <OwnerSales 
@@ -277,6 +277,7 @@ const OwnerDashboard = () => {
             fetchAmenities={fetchAmenities}
           />
         )}
+
       </main>
     </div>
   );
