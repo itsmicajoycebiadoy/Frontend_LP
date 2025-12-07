@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 
@@ -19,18 +19,17 @@ const Reservations = () => {
 
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const selectedAmenity = location.state?.selectedAmenity; // Keep for UI demo
   const backgroundImageUrl = "/images/bg.jpg";
 
-  // State Management - Basic UI state only
+  // State Management - Basic UI state only (Week 3)
+  const [cart, setCart] = useState([]);
   const [showCartModal, setShowCartModal] = useState(false);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState(null);
   
-  // For UI demonstration only - will be replaced with real data later
-  const [cart, setCart] = useState([]);
-  const [reservationCount, setReservationCount] = useState(0);
-  
-  // For UI demonstration only - placeholder form data
+  // For UI demonstration only
   const [reservationForm, setReservationForm] = useState({
     fullName: "",
     address: "",
@@ -39,78 +38,149 @@ const Reservations = () => {
     checkOutDate: "",
     paymentScreenshot: null
   });
+  
+  const [reservationCount, setReservationCount] = useState(0);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  // Placeholder handlers for UI demonstration
+  // Week 3: Basic placeholder handlers
   const handleViewReservations = () => {
-    console.log("View reservations clicked");
+    console.log("Week 3: View reservations clicked");
     setShowReservationsModal(true);
     
-    // Mock data for UI demonstration
+    // Mock reservation count for UI
     if (isAuthenticated) {
-      setReservationCount(3); // Mock count
+      setReservationCount(3);
     }
   };
 
-  const handleAddToCart = () => {
-    console.log("Add to cart clicked");
-    // Mock cart item for UI demonstration
-    setCart([{ 
-      id: 1, 
-      amenity_name: "Swimming Pool", 
-      amenity_price: 500, 
-      quantity: 1,
-      capacity: 20,
-      description: "Large swimming pool with lounge chairs"
-    }]);
-  };
-
+  // Week 3: Basic form handling (no validation)
   const handleReservationInputChange = (e) => {
-    const { name, value } = e.target;
-    setReservationForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    console.log(`Form field ${name} changed to: ${value}`);
+    const { name, value, files } = e.target;
+    
+    if (name === "paymentScreenshot") {
+      const file = files[0];
+      if (file) {
+        // Basic image preview for UI (Week 3)
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+        
+        setReservationForm(prev => ({
+          ...prev,
+          paymentScreenshot: file
+        }));
+      }
+    } else if (name === "contactNumber") {
+      // Basic number formatting (Week 3)
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 11);
+      setReservationForm(prev => ({
+        ...prev,
+        [name]: numbersOnly
+      }));
+    } else {
+      setReservationForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
+  // Week 3: Basic form submission (no API)
   const handleReservationSubmit = (e) => {
     e.preventDefault();
-    console.log("Reservation form submitted with:", reservationForm);
+    console.log("Week 3: Form submitted (placeholder)");
+    console.log("Form data:", reservationForm);
     console.log("Cart items:", cart);
-    alert("Reservation functionality will be implemented in later weeks!");
+    
+    if (cart.length === 0) {
+      alert("Please add at least one amenity to your cart");
+      return;
+    }
+    
+    alert("Reservation submitted (UI demo only). Real functionality in Week 4.");
+    
+    // Clear form for UI demonstration
+    setReservationForm({
+      fullName: "",
+      address: "",
+      contactNumber: "",
+      checkInDate: "",
+      checkOutDate: "",
+      paymentScreenshot: null
+    });
+    setCart([]);
+    setImagePreview(null);
   };
 
-  const handleCancelReservation = () => {
-    console.log("Cancel reservation clicked");
-    setReservationToCancel({
-      id: 1,
-      reservationNumber: "RES-2023-001",
-      amenities: ["Swimming Pool"],
-      checkInDate: "2023-12-15",
-      checkOutDate: "2023-12-17",
-      totalAmount: 1500,
-      status: "Confirmed"
+  // Week 3: Basic cart functionality (UI only)
+  const handleAddToCart = (amenity) => {
+    console.log("Week 3: Adding to cart (UI demo)");
+    
+    // Check if amenity is already in cart
+    const exists = cart.find((item) => item.amenity_id === amenity.id);
+    if (exists) {
+      alert("This amenity is already in your cart");
+      return;
+    }
+
+    // Limit cart size for UI demo
+    if (cart.length >= 10) {
+      alert("You can only add up to 10 different amenities in the cart.");
+      return;
+    }
+
+    // Add amenity to cart
+    setCart((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        amenity_id: amenity.id,
+        amenity_name: amenity.name || "Sample Amenity",
+        amenity_price: amenity.price || 500,
+        quantity: 1,
+        capacity: amenity.capacity || 10,
+        description: amenity.description || "Sample description"
+      }
+    ]);
+  };
+
+  const removeFromCart = (index) => {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const adjustQuantity = (index, delta) => {
+    setCart((prev) => {
+      const updatedCart = [...prev];
+      const newQuantity = updatedCart[index].quantity + delta;
+      if (newQuantity >= 1) {
+        updatedCart[index].quantity = newQuantity;
+      }
+      return updatedCart;
     });
   };
 
-  const confirmCancelReservation = () => {
-    console.log("Confirm cancellation");
-    alert("Cancellation functionality will be implemented in later weeks!");
-    setReservationToCancel(null);
-  };
+  const calculateTotal = () =>
+    cart.reduce((total, item) => total + (item.amenity_price || 0) * item.quantity, 0);
 
-  const cancelCancelReservation = () => {
-    console.log("Cancel cancellation");
-    setReservationToCancel(null);
-  };
+  const calculateDownpayment = () => calculateTotal() * 0.2;
 
-  // Mock data for reservations modal
-  const mockReservations = [
+  // Week 3: Auto-add selected amenity for UI flow
+  useEffect(() => {
+    if (selectedAmenity) {
+      console.log("Week 3: Auto-adding selected amenity to cart");
+      handleAddToCart(selectedAmenity);
+    }
+  }, [selectedAmenity]);
+
+  // Week 3: Mock data for reservations modal
+  const mockReservations = isAuthenticated ? [
     {
       id: 1,
       reservationNumber: "RES-2023-001",
@@ -123,39 +193,36 @@ const Reservations = () => {
       status: "Confirmed",
       paymentStatus: "Partial",
       dateBooked: "2023-12-01"
-    },
-    {
-      id: 2,
-      reservationNumber: "RES-2023-002",
-      amenities: ["Cottage"],
-      checkInDate: "2023-12-20T10:00:00",
-      checkOutDate: "2023-12-20T18:00:00",
-      totalAmount: 800,
-      downpayment: 160,
-      balance: 640,
-      status: "Pending",
-      paymentStatus: "Pending",
-      dateBooked: "2023-12-05"
     }
-  ];
+  ] : [];
 
-  // Mock cart functions for UI demonstration
-  const removeFromCart = () => {
-    console.log("Remove from cart");
-    setCart([]);
+  // Week 3: Placeholder cancel functions
+  const handleCancelReservation = (reservation) => {
+    console.log("Week 3: Cancel reservation clicked");
+    setReservationToCancel(reservation);
   };
 
-  const adjustQuantity = () => {
-    console.log("Adjust quantity");
+  const confirmCancelReservation = () => {
+    console.log("Week 3: Confirm cancellation (placeholder)");
+    alert("Cancellation functionality will be implemented in Week 4.");
+    setReservationToCancel(null);
   };
 
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (item.amenity_price * item.quantity), 0);
+  const cancelCancelReservation = () => {
+    console.log("Week 3: Cancel cancellation");
+    setReservationToCancel(null);
   };
 
-  const calculateDownpayment = () => {
-    return calculateTotal() * 0.2;
+  const removeImagePreview = () => {
+    setImagePreview(null);
+    setReservationForm(prev => ({
+      ...prev,
+      paymentScreenshot: null
+    }));
   };
+
+  // Week 3: Simple form errors for UI demonstration
+  const formErrors = {};
 
   return (
     <div className="min-h-screen flex flex-col font-body">
@@ -168,7 +235,7 @@ const Reservations = () => {
         backgroundImageUrl={backgroundImageUrl}
       />
 
-      {/* Action Buttons - With placeholder props */}
+      {/* Action Buttons */}
       <ActionButtons
         onViewReservations={handleViewReservations}
         onOpenCart={() => setShowCartModal(true)}
@@ -188,23 +255,23 @@ const Reservations = () => {
             </div>
           )}
           
-          {/* Reservation Form - With placeholder props */}
+          {/* Reservation Form */}
           <ReservationForm
             reservationForm={reservationForm}
-            formErrors={{}}
-            imagePreview={null}
+            formErrors={formErrors}
+            imagePreview={imagePreview}
             cart={cart}
             calculateTotal={calculateTotal}
             calculateDownpayment={calculateDownpayment}
             handleReservationInputChange={handleReservationInputChange}
             handleReservationSubmit={handleReservationSubmit}
-            removeImagePreview={() => console.log("Remove image")}
+            removeImagePreview={removeImagePreview}
             onAddToCart={handleAddToCart}
           />
         </div>
       </main>
 
-      {/* MODALS - UI Only for now */}
+      {/* MODALS */}
       <ReservationsModal
         isOpen={showReservationsModal}
         onClose={() => setShowReservationsModal(false)}
