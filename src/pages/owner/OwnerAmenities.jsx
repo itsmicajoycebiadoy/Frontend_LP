@@ -244,7 +244,16 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 </div>
             </div>
             {/* Availability Toggle (Standalone, malinis tingnan) */}
-            
+            <div className='pt-2'>
+                <label className="text-xs text-gray-500 font-medium mb-1 block">Availability Status</label>
+                <button 
+                    onClick={() => setForm({...form, available: !form.available})} 
+                    type="button"
+                    className={`w-full py-2.5 rounded-md text-sm font-semibold transition-colors ${form.available ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-red-500 text-white hover:bg-red-600'}`}
+                >
+                    {form.available ? 'Mark as Unavailable' : 'Mark as Available'}
+                </button>
+            </div>
         </div>
     );
 
