@@ -3,8 +3,6 @@ import { useAuth } from "../AuthContext";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 import { Star, Send, CheckCircle2, BarChart3, Quote, Loader2, ShieldCheck } from "lucide-react";
-
-// IMPORT YOUR AXIOS INSTANCE (Centralized URL management)
 import api from "../../config/axios.js"; 
 
 const Feedback = () => {
@@ -16,6 +14,8 @@ const Feedback = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('recent');
+  const [filteredReviews, setFilteredReviews] = useState([]);
 
   // Form State (3 Categories)
   const [formData, setFormData] = useState({ 
@@ -28,38 +28,64 @@ const Feedback = () => {
   const fetchReviews = async () => {
     try {
       setIsLoading(true);
-      // GET request gamit ang centralized 'api' instance
       const response = await api.get('/api/feedbacks');
       
       // Transform Backend Data to UI Format
       const formattedReviews = response.data.map(review => ({
         id: review.id,
         name: review.customer_name || "Anonymous",
-        // Basahin ang breakdown columns
         ratings: { 
           service: review.service, 
           cleanliness: review.cleanliness, 
           amenities: review.amenities 
         }, 
-        average: review.average, // Overall Average
+        average: review.average,
         comment: review.comment,
-        date: new Date(review.date).toLocaleDateString()
+        date: new Date(review.date),
+        rawDate: review.date
       }));
 
-      // FINAL FILTER LOGIC: Show only reviews with 4.0 or higher
+      // FILTER: Show only reviews with 4.0 or higher
       const highRatedReviews = formattedReviews.filter(review => review.average >= 4);
-
       setReviews(highRatedReviews);
-      } catch (error) {
-        console.error("Error fetching feedbacks:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setFilteredReviews(highRatedReviews.slice(0, 6)); // Limit to 6 initially
+      
+    } catch (error) {
+      console.error("Error fetching feedbacks:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchReviews();
   }, []);
+
+  // Apply filter when reviews or activeFilter changes
+  useEffect(() => {
+    let filtered = [...reviews];
+    
+    switch (activeFilter) {
+      case 'recent':
+        filtered.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+        break;
+      case 'highest':
+        filtered.sort((a, b) => parseFloat(b.average) - parseFloat(a.average));
+        break;
+      case 'featured':
+        // Featured: longest comments + highest ratings
+        filtered.sort((a, b) => {
+          const scoreA = parseFloat(a.average) + (a.comment.length / 100);
+          const scoreB = parseFloat(b.average) + (b.comment.length / 100);
+          return scoreB - scoreA;
+        });
+        break;
+      default:
+        break;
+    }
+    
+    setFilteredReviews(filtered.slice(0, 6)); // Always show only 6
+  }, [activeFilter, reviews]);
 
   // --- HELPERS ---
   const getCurrentFormAverage = () => {
@@ -80,7 +106,6 @@ const Feedback = () => {
     return (total / reviews.length).toFixed(1);
   };
 
-
   const handleRatingChange = (category, value) => {
     setFormData(prev => ({
       ...prev,
@@ -88,22 +113,22 @@ const Feedback = () => {
     }));
   };
 
-  // --- SUBMIT TO BACKEND (Sends breakdown) ---
+  // --- SUBMIT TO BACKEND ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     const unrated = Object.values(formData.ratings).some(r => r === 0);
-    if (unrated) { alert("Please rate all categories first."); return; }
+    if (unrated) { 
+      alert("Please rate all categories first."); 
+      return; 
+    }
 
     setIsSubmitting(true);
 
     try {
-      // 1. Calculate Average
       const values = Object.values(formData.ratings);
       const avgRating = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
 
-      // 2. Prepare Payload (Sends the breakdown object for DB insertion)
       const payload = {
         name: formData.name || "Anonymous Guest",
         rating: avgRating, 
@@ -111,25 +136,26 @@ const Feedback = () => {
         ratings: formData.ratings
       };
 
-      // 3. API Post using centralized config
       const response = await api.post('/api/feedbacks', payload);
 
       if (response.data.success) {
-        
-        // Only show in UI immediately IF it's a high rating (4.0+)
-        if (payload.rating >= 4) {
-            const newReviewUI = {
-                id: Date.now(),
-                name: payload.name,
-                ratings: formData.ratings,
-                average: payload.rating,
-                comment: payload.comment,
-                date: new Date().toLocaleDateString()
-            };
-            setReviews([newReviewUI, ...reviews]);
+        // Only add to UI if it's high rating
+        if (parseFloat(avgRating) >= 4) {
+          const newReview = {
+            id: Date.now(),
+            name: payload.name,
+            ratings: formData.ratings,
+            average: avgRating,
+            comment: payload.comment,
+            date: new Date(),
+            rawDate: new Date().toISOString()
+          };
+          
+          // Add to beginning and re-apply filter
+          setReviews(prev => [newReview, ...prev]);
         }
 
-        // Reset Form & Show Success Message
+        // Reset form
         setFormData({ name: '', ratings: { service: 0, cleanliness: 0, amenities: 0 }, comment: '' });
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
@@ -153,45 +179,112 @@ const Feedback = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header user={user} />
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - EDGE TO EDGE */}  
       <section
-        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20"
+        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20 w-full"
         style={{
           backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImageUrl})`,
         }}
       >
-        <div className="container mx-auto px-4 sm:px-6 text-center">
+        <div className="text-center px-4">
           <h2 className="text-3xl md:text-6xl font-bold text-white font-header mb-4">
-            Feedback
+            Guest Feedback
           </h2>
-          <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto mb-8">
-             Your opinion matters. Help us improve your experience at La Piscina Resort.
+          <p className="text-sm md:text-lg text-gray-200 mx-auto mb-8">
+            Your opinion matters. Help us improve your experience at La Piscina Resort.
           </p>
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-grow container mx-auto px-4 sm:px-6 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-7xl mx-auto">
+      {/* MAIN CONTENT - EDGE TO EDGE */}
+      <div className="flex-grow w-full px-4 sm:px-6 py-8 lg:py-12">
+        {/* MOBILE: ANALYTICS/RATINGS FIRST */}
+        <div className="lg:hidden mb-8">
+          <div className="bg-white p-6 shadow-sm border border-gray-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <BarChart3 size={24} className="text-[#ea580c]" />
+              Guest Ratings
+            </h3>
+            
+            {/* Overall Rating */}
+            <div className="flex flex-col items-center gap-6 mb-8">
+              <div className="relative w-40 h-40">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle 
+                    cx="50%" 
+                    cy="50%" 
+                    r="45%" 
+                    stroke="#f3f4f6" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                  />
+                  <circle 
+                    cx="50%" 
+                    cy="50%" 
+                    r="45%" 
+                    stroke="#ea580c" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                    strokeDasharray={351}
+                    strokeDashoffset={351 - (351 * getOverallAverage()) / 5}
+                    className="transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl font-bold text-[#ea580c]">
+                    {getOverallAverage()}
+                  </span>
+                  <span className="text-sm text-gray-500 mt-1">out of 5</span>
+                </div>
+              </div>
+              
+              {/* Category Breakdown */}
+              <div className="w-full space-y-4">
+                {categories.map((cat) => {
+                  const avg = getCategoryAverage(cat.id);
+                  const percentage = (avg / 5) * 100;
+                  return (
+                    <div key={cat.id}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium text-gray-700">{cat.label}</span>
+                        <span className="font-bold text-gray-900">{avg}/5</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-100 overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316]"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 w-full">
           
-          {/* LEFT COLUMN: SUBMISSION FORM */}
-          <div className="lg:col-span-5 order-2 lg:order-1">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 sticky top-24">
+          {/* DESKTOP LEFT: FORM */}
+          <div className="lg:col-span-5">
+            <div className="bg-white shadow-lg border border-gray-100 lg:sticky lg:top-6">
               
               {/* Form Header */}
-              <div className="bg-[#ea580c] p-6 text-white flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-xl">Write a Review</h3>
-                  <p className="text-white/80 text-xs mt-1">Share your story</p>
-                </div>
-                {getCurrentFormAverage() > 0 && (
-                  <div className="bg-white text-[#ea580c] px-3 py-1 rounded-full font-bold shadow-sm">
-                    {getCurrentFormAverage()}
+              <div className="bg-[#ea580c] p-5 lg:p-6 text-white">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-xl">Share Your Experience</h3>
+                    <p className="text-white/80 text-xs mt-1">We value your feedback</p>
                   </div>
-                )}
+                  {getCurrentFormAverage() > 0 && (
+                    <div className="bg-white text-[#ea580c] px-3 py-1 font-bold text-sm">
+                      {getCurrentFormAverage()}<span className="text-xs ml-1">/5</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="p-6 md:p-8 relative">
+              <div className="p-5 lg:p-6 relative">
                 
                 {/* Success Message Overlay */}
                 {showSuccess && (
@@ -205,7 +298,7 @@ const Feedback = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Rating Sliders */}
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 block">1. Rate Categories</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 block">Rate Your Experience</label>
                     <div className="space-y-4">
                       {categories.map((cat) => (
                         <div key={cat.id} className="flex flex-col sm:flex-row sm:items-center justify-between">
@@ -219,7 +312,7 @@ const Feedback = () => {
                                 className="focus:outline-none hover:scale-110 transition-transform"
                               >
                                 <Star
-                                  size={24}
+                                  size={22}
                                   fill={star <= formData.ratings[cat.id] ? "#f59e0b" : "#e5e7eb"}
                                   className={star <= formData.ratings[cat.id] ? "text-[#f59e0b]" : "text-gray-200"}
                                   strokeWidth={0}
@@ -236,23 +329,23 @@ const Feedback = () => {
 
                   {/* Details Input */}
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 block">2. Your Details</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 block">Your Details</label>
                     <div className="space-y-4">
                       <input
                         type="text"
                         placeholder="Your Name (Optional)"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded focus:border-[#ea580c] outline-none text-sm transition-colors"
+                        className="w-full p-3 bg-gray-50 border border-gray-200 focus:border-[#ea580c] outline-none text-sm transition-colors"
                         value={formData.name}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
                       />
                       <textarea
                         rows="4"
                         placeholder="What did you love about your stay? How can we improve?"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded focus:border-[#ea580c] outline-none text-sm resize-none transition-colors"
+                        className="w-full p-3 bg-gray-50 border border-gray-200 focus:border-[#ea580c] outline-none text-sm resize-none transition-colors"
                         value={formData.comment}
                         onChange={(e) => setFormData({...formData, comment: e.target.value})}
                         required
-                      ></textarea>
+                      />
                     </div>
                   </div>
 
@@ -261,128 +354,201 @@ const Feedback = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-[#ea580c] hover:bg-[#c2410c] text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl hover:shadow-orange-200 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="w-full bg-[#ea580c] hover:bg-[#c2410c] text-white font-bold py-3 px-6 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
-                        <span className="animate-pulse">Processing...</span>
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          <span>Processing...</span>
+                        </>
                       ) : (
                         <>
-                          Submit Review <Send size={18} />
+                          Submit Review 
+                          <Send size={18} />
                         </>
                       )}
                     </button>
                     
-                    <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400 opacity-80">
+                    <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
                       <ShieldCheck size={12} />
                       <span>Encrypted & Secure Submission</span>
                     </div>
                   </div>
                 </form>
               </div>
-              
             </div>
           </div>
 
-          {/* RIGHT COLUMN: ANALYTICS & REVIEWS */}
+          {/* DESKTOP RIGHT: ANALYTICS & REVIEWS */}
           <div className="lg:col-span-7 space-y-6">
-            
-            {/* ANALYTICS CARD */}
-            <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-orange-100">
-              <h3 className="text-xl font-bold text-[#c2410c] mb-6 flex items-center gap-2">
+            {/* DESKTOP ANALYTICS CARD */}
+            <div className="hidden lg:block bg-white p-6 shadow-sm border border-gray-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <BarChart3 size={24} className="text-[#ea580c]" />
-                Overall Performance
+                Guest Ratings
               </h3>
               
-              <div className="flex flex-col md:flex-row gap-8 items-center">
-                <div className="relative flex items-center justify-center w-40 h-40">
+              {/* Overall Rating */}
+              <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
+                <div className="relative w-32 h-32">
                   <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="80" cy="80" r="70" stroke="#fff7ed" strokeWidth="8" fill="transparent" />
                     <circle 
-                      cx="80" cy="80" r="70" 
-                      stroke="#ea580c" strokeWidth="8" fill="transparent" 
-                      strokeDasharray={440}
-                      strokeDashoffset={440 - (440 * getOverallAverage()) / 5}
+                      cx="50%" 
+                      cy="50%" 
+                      r="45%" 
+                      stroke="#f3f4f6" 
+                      strokeWidth="8" 
+                      fill="transparent" 
+                    />
+                    <circle 
+                      cx="50%" 
+                      cy="50%" 
+                      r="45%" 
+                      stroke="#ea580c" 
+                      strokeWidth="8" 
+                      fill="transparent" 
+                      strokeDasharray={351}
+                      strokeDashoffset={351 - (351 * getOverallAverage()) / 5}
                       className="transition-all duration-1000 ease-out"
                     />
                   </svg>
-                  <div className="absolute flex flex-col items-center">
-                    <span className="text-4xl font-bold text-[#c2410c]">{getOverallAverage()}</span>
-                    <div className="flex text-[#f59e0b] text-[10px]">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Star key={i} size={10} fill={i <= Math.round(getOverallAverage()) ? "currentColor" : "none"} />
-                      ))}
-                    </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-[#ea580c]">
+                      {getOverallAverage()}
+                    </span>
+                    <span className="text-sm text-gray-500 mt-1">out of 5</span>
                   </div>
                 </div>
-
-                <div className="flex-1 w-full space-y-3">
-                  {categories.map((cat) => (
-                    <div key={cat.id} className="group">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-semibold text-slate-600">{cat.label}</span>
-                        <span className="font-bold text-[#c2410c]">{getCategoryAverage(cat.id)}</span>
+                
+                {/* Category Breakdown */}
+                <div className="flex-1 space-y-4">
+                  {categories.map((cat) => {
+                    const avg = getCategoryAverage(cat.id);
+                    const percentage = (avg / 5) * 100;
+                    return (
+                      <div key={cat.id}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium text-gray-700">{cat.label}</span>
+                          <span className="font-bold text-gray-900">{avg}/5</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-100 overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316]"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 w-full bg-orange-50 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-[#ea580c] rounded-full transition-all duration-1000 group-hover:bg-[#f97316]"
-                          style={{ width: `${(getCategoryAverage(cat.id) / 5) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4">
-              <h3 className="text-xl font-bold text-[#c2410c]">
-                Recent Guest Reviews
-              </h3>
-              <span className="text-sm text-slate-500">{reviews.length} Verified Reviews</span>
-            </div>
-
-            {/* Reviews List (COMPACT SCROLLABLE CONTAINER) */}
-            <div 
-              className="space-y-4 lg:max-h-[75vh] overflow-y-auto hide-scrollbar" 
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {isLoading ? (
-                  <div className="text-center py-12 text-gray-400 flex flex-col items-center">
-                      <Loader2 size={32} className="animate-spin text-[#ea580c] mb-2" />
-                      Loading reviews...
+            {/* REVIEWS SECTION (BOTH MOBILE & DESKTOP) */}
+            <div className="mt-8 lg:mt-0">
+              {/* REVIEWS HEADER WITH FILTERS */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-1">Guest Reviews</h3>
+                  <p className="text-sm text-gray-500">
+                    What other guests are saying
+                  </p>
+                </div>
+                
+                {/* Filter Buttons */}
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1 bg-gray-100 p-1">
+                    {[
+                      { id: 'recent', label: 'Recent', icon: '🕒' },
+                      { id: 'highest', label: 'Highest', icon: '⭐' },
+                      { id: 'featured', label: 'Featured', icon: '✨' }
+                    ].map((filter) => (
+                      <button
+                        key={filter.id}
+                        onClick={() => setActiveFilter(filter.id)}
+                        className={`px-3 py-2 flex items-center gap-1 text-sm transition-all ${activeFilter === filter.id 
+                          ? 'bg-white text-[#ea580c] shadow-sm' 
+                          : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        <span>{filter.icon}</span>
+                        <span>{filter.label}</span>
+                      </button>
+                    ))}
                   </div>
-              ) : reviews.length > 0 ? (
-                  reviews.map((review) => (
-                    <div key={review.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative">
-                      <Quote className="absolute top-4 right-4 text-gray-100 w-8 h-8 transform rotate-180" />
-                      
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-orange-100 text-[#ea580c] rounded-full flex items-center justify-center font-bold">
-                          {review.name.charAt(0).toUpperCase()}
+                </div>
+              </div>
+
+              {/* REVIEWS GRID - FIXED 6 ITEMS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {isLoading ? (
+                  <div className="col-span-2 flex flex-col items-center justify-center py-12 text-gray-400">
+                    <Loader2 size={32} className="animate-spin text-[#ea580c] mb-2" />
+                    <p>Loading reviews...</p>
+                  </div>
+                ) : filteredReviews.length > 0 ? (
+                  filteredReviews.map((review) => (
+                    <div key={review.id} className="bg-white p-5 border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                      {/* Reviewer Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#ea580c]/10 text-[#ea580c] flex items-center justify-center font-bold">
+                            {review.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm">{review.name}</p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(review.date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-gray-800 text-sm">{review.name}</p>
-                          <p className="text-xs text-gray-400">{review.date}</p>
+                        <div className="flex items-center bg-gray-50 px-2 py-1">
+                          <Star size={12} className="text-[#ea580c] fill-[#ea580c] mr-1" />
+                          <span className="font-bold text-gray-800 text-sm">{review.average}</span>
                         </div>
                       </div>
 
-                      {/* Display Stars */}
-                      <div className="flex mb-3">
-                         {[1, 2, 3, 4, 5].map((star) => (
-                            <Star key={star} size={14} fill={star <= Math.round(review.average) ? "#f59e0b" : "#e5e7eb"} strokeWidth={0} />
-                         ))}
+                      {/* Comment */}
+                      <div className="mb-4">
+                        <div className="relative">
+                          <Quote className="absolute -top-2 -left-2 text-gray-200 w-6 h-6" />
+                          <p className="text-gray-600 text-sm line-clamp-3 relative z-10 pl-3">
+                            "{review.comment}"
+                          </p>
+                        </div>
                       </div>
 
-                      <p className="text-gray-600 text-sm italic leading-relaxed">"{review.comment}"</p>
+                      {/* Category Ratings */}
+                      <div className="pt-3 border-t border-gray-100">
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(review.ratings).map(([key, value]) => (
+                            <div 
+                              key={key} 
+                              className="flex items-center gap-1 bg-gray-50 px-2 py-1 text-xs"
+                            >
+                              <span className="text-gray-600 capitalize">{key}:</span>
+                              <span className="font-bold text-gray-800">{value}/5</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   ))
-              ) : (
-                  <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                      <p className="text-gray-400">No high-rated reviews yet. Be the first!</p>
+                ) : (
+                  <div className="col-span-2 text-center py-12 bg-white border border-dashed border-gray-300">
+                    <div className="flex flex-col items-center justify-center">
+                      <Star size={48} className="text-gray-300 mb-4" />
+                      <p className="text-gray-500 font-medium mb-2">No reviews yet</p>
+                      <p className="text-sm text-gray-400">Be the first to share your experience!</p>
+                    </div>
                   </div>
-              )}
+                )}
+              </div>
             </div>
-
           </div>
         </div>
       </div>
