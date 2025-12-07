@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../config/axios'; // Centralized API
 import { LogOut, Menu, X } from 'lucide-react'; // ADDED Menu, X
-import OwnerOverview from './OwnerOverview';
 import OwnerSales from './OwnerSales';
 import OwnerFeedback from './OwnerFeedback';
 import OwnerAmenities from './OwnerAmenities';
