@@ -1,4 +1,3 @@
-// FILE: src/pages/customer/CustomerDashboard.jsx
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -7,14 +6,14 @@ import axios from "axios";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 // IMPORT NEW COMPONENTS
-import HeroSection from "./customerdashboardcomponents/HeroSection";
-import WelcomeSection from "./customerdashboardcomponents/WelcomeSection";
-import FeaturedAmenities from "./customerdashboardcomponents/FeaturedAmenities";
-import GallerySection from "./customerdashboardcomponents/GallerySection";
-import FeedbackSection from "./customerdashboardcomponents/FeedbackSection";
-import ContactSection from "./customerdashboardcomponents/ContactSection";
-import MapSection from "./customerdashboardcomponents/MapSection";
-import ReviewModal from "./customerdashboardcomponents/ReviewModal";
+import HeroSection from "../../components/customerdashboardcomponents/HeroSection";
+import WelcomeSection from "../../components/customerdashboardcomponents/WelcomeSection";
+import FeaturedAmenities from "../../components/customerdashboardcomponents/FeaturedAmenities";
+import GallerySection from "../../components/customerdashboardcomponents/GallerySection";
+import FeedbackSection from "../../components/customerdashboardcomponents/FeedbackSection";
+import ContactSection from "../../components/customerdashboardcomponents/ContactSection";
+import MapSection from "../../components/customerdashboardcomponents/MapSection";
+import ReviewModal from "../../components/customerdashboardcomponents/ReviewModal";
 
 const API_URL = "http://localhost:5000";
 
@@ -44,7 +43,7 @@ const CustomerDashboard = () => {
                         setFeaturedAmenities(response.data);
                     } else { throw new Error("No data"); }
                 } catch (err) {
-					console.log(err);
+                    console.log(err);
                     // Fallback Data
                     setFeaturedAmenities([
                         { id: 1, name: "Refreshing Pool", description: "Dive into relaxation.", image: "pool.png" },
@@ -70,8 +69,9 @@ const CustomerDashboard = () => {
                     }));
                     setReviews(formattedReviews.filter(r => parseFloat(r.average) >= 4.0));
                 } catch (error) { 
-					console.log(error);
-					setReviews([]); }
+                    console.log(error);
+                    setReviews([]); 
+                }
 
             } catch (error) { console.error(error); }
             finally { setIsLoadingReviews(false); setIsLoadingData(false); }
@@ -107,28 +107,36 @@ const CustomerDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col font-body bg-white overflow-x-hidden relative">
-            <div className="sticky top-0 z-50 w-full bg-white shadow-sm">
+        // FIX: Ensure full width and no horizontal scroll
+        <div className="min-h-screen flex flex-col font-body bg-white w-full overflow-x-hidden relative">
+            
+            {/* Header Sticky Wrapper */}
+            <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
                 <Header user={user} />
             </div>
 
-            <HeroSection />
-            <WelcomeSection />
-            <FeaturedAmenities 
-                isLoading={isLoadingData} 
-                amenities={featuredAmenities} 
-                apiUrl={API_URL} 
-            />
-            <GallerySection apiUrl={API_URL} />
-            <FeedbackSection 
-                reviews={reviews} 
-                isLoading={isLoadingReviews} 
-                onOpenModal={() => setIsReviewModalOpen(true)} 
-            />
-            <ContactSection />
-            <MapSection />
+            {/* Sections - They are inherently full width if components are styled correctly */}
+            <main className="flex-1 w-full">
+                <HeroSection />
+                <WelcomeSection />
+                <FeaturedAmenities 
+                    isLoading={isLoadingData} 
+                    amenities={featuredAmenities} 
+                    apiUrl={API_URL} 
+                />
+                <GallerySection apiUrl={API_URL} />
+                <FeedbackSection 
+                    reviews={reviews} 
+                    isLoading={isLoadingReviews} 
+                    onOpenModal={() => setIsReviewModalOpen(true)} 
+                />
+                <ContactSection />
+                <MapSection />
+            </main>
+
             <Footer />
 
+            {/* Modals & Toasts */}
             {isReviewModalOpen && (
                 <ReviewModal 
                     onClose={() => setIsReviewModalOpen(false)} 
@@ -138,9 +146,9 @@ const CustomerDashboard = () => {
             )}
 
             {showFeedbackSuccess && (
-                <div className="fixed bottom-8 right-8 z-[60] bg-green-600 text-white px-6 py-4 shadow-lg flex items-center gap-3 animate-in slide-in-from-right duration-300">
+                <div className="fixed bottom-8 right-8 z-[60] bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-right duration-300">
                     <CheckCircle2 size={24} />
-                    <div><h4 className="font-bold text-sm">Thank You!</h4><p className="text-xs text-green-100">Review submitted.</p></div>
+                    <div><h4 className="font-bold text-sm">Thank You!</h4><p className="text-xs text-green-100">Review submitted successfully.</p></div>
                 </div>
             )}
         </div>
