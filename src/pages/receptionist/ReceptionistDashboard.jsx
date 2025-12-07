@@ -247,8 +247,13 @@ const ReceptionistDashboard = () => {
         </div>
       </nav>
 
-      {/* REMOVED: Main Content Section */}
-      
+      {/* Main Content - Edge to Edge */}
+      {/* 👇 CHANGED: w-full px-6 py-6 (Removed max-w-7xl) */}
+      <main className="w-full px-6 py-6">
+        {activeTab === 'overview' && <ReservationOverview stats={stats} transactions={transactions} fetchData={fetchDashboardData} />}
+        {activeTab === 'reservations' && <ReservationManagement transactions={transactions} fetchData={fetchDashboardData} />}
+        {activeTab === 'walk-in' && <WalkInBooking fetchData={fetchDashboardData} />}
+      </main>
     </div>
   );
 };
