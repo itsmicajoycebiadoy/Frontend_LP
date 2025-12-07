@@ -231,6 +231,14 @@ const OwnerAnalytics = () => {
             </div>
         )}
 
+        {/* 1. KPI CARDS */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+            <StatCard title="Gross Sales" value={data.financials.gross_sales} icon={TrendingUp} subText={kpiMetrics.isTrendingUp ? "Trending Up" : "Below Avg"} trendIcon={kpiMetrics.isTrendingUp ? ArrowUpRight : ArrowDownRight} color={kpiMetrics.isTrendingUp ? 'text-emerald-600' : 'text-rose-500'} bg={kpiMetrics.isTrendingUp ? 'bg-emerald-50' : 'bg-rose-50'} />
+            <StatCard title="Cash Collected" value={data.financials.cash_collected} icon={DollarSign} subText="Liquidity" color="text-blue-600" bg="bg-blue-50" trendIcon={Wallet} />
+            <StatCard title="Receivables" value={data.financials.receivables} icon={Wallet} subText="Pending" color={data.financials.receivables > 0 ? 'text-rose-500' : 'text-slate-500'} bg="bg-slate-50" trendIcon={Filter} />
+            <StatCard title="Total Bookings" value={kpiMetrics.totalBookings} icon={Users} subText="Volume" isMoney={false} color="text-orange-600" bg="bg-orange-50" trendIcon={Users} />
+        </div>
+
         {/* 2. REVENUE TREND CHART */}
         <div className={`bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
