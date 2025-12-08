@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../config/axios';
-import TransactionFilters from '../../components/reservationmanagementcomponents/TransactionFilters';
-import TransactionTable from '../../components/reservationmanagementcomponents/TransactionTable';
-import { ActionModal, ProofModal, DetailModal, CheckInModal, ExtendModal } from '../../components/reservationmanagementcomponents/TransactionModals';
+import TransactionFilters from '../../components/OnlineReservationComponent/TransactionFilter';
+import TransactionTable from '../../components/OnlineReservationComponent/TransactionTable';
+import { ActionModal, ProofModal, DetailModal, CheckInModal, ExtendModal } from '../../components/OnlineReservationComponent/TransactionModals';
 import { Calendar, Archive, RefreshCw } from 'lucide-react';
 
 const ReservationManagement = ({ transactions, fetchData }) => {
