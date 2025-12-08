@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../config/axios';
-import WalkInModals from '../../components/walkin/WalkInModals';
-import WalkInForm from '../../components/walkin/WalkInForm';
-import WalkInCart from '../../components/walkin/WalkInCart';
-import WalkInAmenities from '../../components/walkin/WalkInAmenities';
-import WalkInTable from '../../components/walkin/WalkInTable';
+import WalkInModals from '../../components/WalkinBookingComponents/WalkInModal.jsx';
+import WalkInForm from '../../components/WalkinBookingComponents/WalkInForm.jsx';
+import WalkInCart from '../../components/WalkinBookingComponents/WalkInCart.jsx';
+import WalkInAmenities from '../../components/WalkinBookingComponents/WalkInAmenities.jsx';
+import WalkInTable from '../../components/WalkinBookingComponents/WalkInTable.jsx';
 
 const WalkInBooking = ({ fetchData }) => {
   const [amenities, setAmenities] = useState([]);
