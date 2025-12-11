@@ -155,7 +155,7 @@ const InfoModal = ({ isOpen, onClose, type }) => {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-4 sm:p-5 md:p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end p-4 sm:p-5 md:p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
           <button
             onClick={onClose}
             className="px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-lp-orange text-white rounded-lg hover:bg-lp-orange-hover transition-colors font-medium"
