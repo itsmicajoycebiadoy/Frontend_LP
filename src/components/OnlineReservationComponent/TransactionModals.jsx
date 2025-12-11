@@ -14,7 +14,7 @@ const getImageUrl = (imagePath) => {
 };
 
 // ==========================================
-// 1. MOBILE TRANSACTION MODAL
+// 1. MOBILE TRANSACTION MODAL (UPDATED PAYMENT SECTION)
 // ==========================================
 export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewProof, onViewDetails, onStatusUpdate, onExtendBooking, loading }) => {
   if (!isOpen || !transaction) return null;
@@ -140,12 +140,22 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
               </div>
             )}
 
-            {/* Payment */}
+            {/* ✅ Payment - UPDATED WITH "BREAKDOWN" BUTTON */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                <CreditCard size={16} className="text-gray-500" />
-                <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Payment</h4>
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={16} className="text-gray-500" />
+                  <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Payment</h4>
+                </div>
+                {/* 👇 Added Breakdown Button for Mobile */}
+                <button 
+                  onClick={() => onViewDetails(transaction, 'payment')} 
+                  className="text-blue-600 text-xs font-bold hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full transition-colors"
+                >
+                  Breakdown <ChevronRight size={12} />
+                </button>
               </div>
+
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 text-sm">Status</span>
@@ -185,7 +195,7 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
             </div>
           </div>
 
-          {/* ACTION BUTTONS (MOBILE) - ✅ ADDED DISABLED STATES */}
+          {/* ACTION BUTTONS (MOBILE) */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 pb-6 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex flex-wrap gap-3">
               {transaction.booking_status === 'Pending' && !transaction.proof_of_payment ? (
@@ -405,7 +415,7 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
 };
 
 // ==========================================
-// 5. DETAIL MODAL (NEW DESIGN)
+// 5. DETAIL MODAL (UPDATED FOR PAYMENT BREAKDOWN)
 // ==========================================
 export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   if (!isOpen || !transaction) return null;
@@ -413,54 +423,82 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   const reservations = transaction.reservations || [];
   const extensions = transaction.extensions || [];
   
+  // Computations
   const extensionTotal = extensions.reduce((sum, ext) => sum + parseFloat(ext.additional_cost || 0), 0);
-  const totalAmount = parseFloat(transaction.total_amount || 0);
-  const baseTotal = totalAmount - extensionTotal;
+  const totalAmount = parseFloat(transaction.total_amount || 0); // Grand Total
+  const downpayment = parseFloat(transaction.downpayment || 0);   // 20% DP
+  const balance = parseFloat(transaction.balance || 0);           // Remaining Balance
+  
+  // Base total (Original booking price without extensions)
+  const baseTotal = totalAmount - extensionTotal; 
 
   const guestCount = parseInt(transaction.num_guest) || 0;
   const entranceFee = guestCount * 50;
+
+  // View Type Checks
   const isAmenityView = viewType === 'amenities';
+  const isExtensionView = viewType === 'extensions';
+  const isPaymentView = viewType === 'payment';
+
+  // Dynamic Header Title & Icon
+  let title = 'Details';
+  let TitleIcon = FileText;
+  let iconColor = 'text-gray-500';
+
+  if (isAmenityView) {
+    title = 'Amenity Details';
+    TitleIcon = Layers;
+    iconColor = 'text-orange-500';
+  } else if (isExtensionView) {
+    title = 'Extension History';
+    TitleIcon = Clock;
+    iconColor = 'text-purple-500';
+  } else if (isPaymentView) {
+    title = 'Payment Breakdown';
+    TitleIcon = CreditCard;
+    iconColor = 'text-green-600';
+  }
 
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
         
+        {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">
           <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
-            {isAmenityView ? <Layers className="text-orange-500" size={24}/> : <Clock className="text-purple-500" size={24}/>}
-            {isAmenityView ? 'Amenity Details' : 'Extension History'}
+            <TitleIcon className={iconColor} size={24}/>
+            {title}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24}/></button>
         </div>
 
+        {/* Body */}
         <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
-          <div className="mb-6">
+          
+          {/* Common Customer Info Header */}
+          <div className="mb-6 border-b border-gray-50 pb-4">
             <h2 className="text-2xl font-bold text-slate-900">{transaction.customer_name}</h2>
-            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold mt-1">REF: {transaction.transaction_ref}</p>
-            
-            {transaction.num_guest && (
-               <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-sm font-medium text-gray-600">
-                  <Users size={16} className="text-orange-500" />
-                  <span>{transaction.num_guest} Guests</span>
-               </div>
-            )}
+            <div className="flex justify-between items-center mt-1">
+               <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">REF: {transaction.transaction_ref}</p>
+               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${transaction.payment_status === 'Fully Paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                  {transaction.payment_status}
+               </span>
+            </div>
           </div>
 
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-            {isAmenityView ? 'Booked Items' : 'Extensions'}
-          </p>
-
-          {isAmenityView ? (
+          {/* ------------------------------------------- */}
+          {/* VIEW: AMENITIES */}
+          {/* ------------------------------------------- */}
+          {isAmenityView && (
             <div className="space-y-1">
               {reservations.map((res, idx) => (
-                <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 px-2 rounded-lg transition-colors">
+                <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0 px-2 rounded-lg hover:bg-gray-50">
                   <span className="font-medium text-slate-700 text-sm">{res.quantity}x {res.amenity_name}</span>
                   <span className="font-bold text-slate-900 text-sm">₱{(parseFloat(res.price) * parseInt(res.quantity)).toLocaleString()}</span>
                 </div>
               ))}
-
               {guestCount > 0 && (
-                <div className="flex justify-between items-center py-3 px-2 rounded-lg hover:bg-gray-50/50">
+                <div className="flex justify-between items-center py-3 px-2 rounded-lg hover:bg-gray-50">
                   <div className="flex items-center gap-2">
                      <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold">{guestCount}</span>
                      <span className="font-medium text-slate-700 text-sm">Entrance Fee (₱50)</span>
@@ -468,13 +506,17 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
                   <span className="font-bold text-slate-900 text-sm">₱{entranceFee.toLocaleString()}</span>
                 </div>
               )}
-
-              <div className="mt-8 flex justify-between items-end border-t border-gray-100 pt-6">
-                  <span className="text-slate-900 font-bold text-lg">Base Amount</span>
-                  <span className="text-3xl font-bold text-orange-500">₱{baseTotal.toLocaleString()}</span>
+              <div className="mt-4 flex justify-between items-end border-t border-gray-100 pt-4">
+                  <span className="text-slate-500 font-medium text-sm">Subtotal (Base)</span>
+                  <span className="text-lg font-bold text-slate-700">₱{baseTotal.toLocaleString()}</span>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* ------------------------------------------- */}
+          {/* VIEW: EXTENSIONS */}
+          {/* ------------------------------------------- */}
+          {isExtensionView && (
             <div className="space-y-4">
                {extensions.length === 0 ? (
                   <div className="text-center py-8 text-gray-400 italic bg-gray-50 rounded-xl">No extensions recorded.</div>
@@ -497,6 +539,64 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
                )}
             </div>
           )}
+
+          {/* ------------------------------------------- */}
+          {/* VIEW: PAYMENT BREAKDOWN */}
+          {/* ------------------------------------------- */}
+          {isPaymentView && (
+             <div className="space-y-6">
+                
+                {/* 1. Summary Cards */}
+                <div className="grid grid-cols-2 gap-3">
+                   <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                      <p className="text-xs text-blue-600 font-bold uppercase mb-1">Total Contract</p>
+                      <p className="text-lg font-extrabold text-blue-900">₱{totalAmount.toLocaleString()}</p>
+                   </div>
+                   <div className="p-3 bg-green-50 rounded-xl border border-green-100">
+                      <p className="text-xs text-green-600 font-bold uppercase mb-1">Downpayment (Paid)</p>
+                      <p className="text-lg font-extrabold text-green-900">₱{downpayment.toLocaleString()}</p>
+                   </div>
+                </div>
+
+                {/* 2. Detailed List */}
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Booking Base Price</span>
+                        <span className="font-medium text-gray-900">₱{baseTotal.toLocaleString()}</span>
+                    </div>
+                    
+                    {extensionTotal > 0 && (
+                       <div className="flex justify-between items-center text-sm">
+                          <span className="text-purple-600 flex items-center gap-1"><Plus size={12}/> Extensions Added</span>
+                          <span className="font-medium text-purple-700">₱{extensionTotal.toLocaleString()}</span>
+                       </div>
+                    )}
+
+                    <div className="border-t border-gray-200 my-2"></div>
+
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-800 font-bold">Grand Total</span>
+                        <span className="font-bold text-gray-900">₱{totalAmount.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-600 flex items-center gap-1"><Minus size={12}/> Downpayment (20%)</span>
+                        <span className="font-bold text-green-600">- ₱{downpayment.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                {/* 3. Balance Highlight */}
+                <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
+                    <div>
+                        <p className="text-orange-800 font-bold text-sm uppercase tracking-wide">Remaining Balance</p>
+                        <p className="text-xs text-orange-600 opacity-80">To be paid upon check-in</p>
+                    </div>
+                    <p className="text-3xl font-extrabold text-orange-600">₱{balance.toLocaleString()}</p>
+                </div>
+
+             </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -504,7 +604,7 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
 };
 
 // ==========================================
-// 6. EXTEND MODAL (NEW DESIGN)
+// 6. EXTEND MODAL
 // ==========================================
 export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading }) => {
   const [extendHours, setExtendHours] = useState(1);

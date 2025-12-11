@@ -293,7 +293,7 @@ const ReservationOverview = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-lg text-gray-900">₱{transaction.total_amount.toLocaleString()}</p>
+                    <p className="font-semibold text-lg text-gray-900">₱{transaction.total_amount.toLocaleString()}</p>
                   </div>
                 </div>
               </div>

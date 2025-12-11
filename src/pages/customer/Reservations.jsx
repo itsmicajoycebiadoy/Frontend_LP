@@ -144,6 +144,7 @@ const Reservations = () => {
                     try {
                         extensions = JSON.parse(transaction.extension_history);
                     } catch (e) {
+                        console.log(e);
                         extensions = [];
                     }
                 } else if (Array.isArray(transaction.extension_history)) {
@@ -564,6 +565,7 @@ const Reservations = () => {
                         try {
                             extensions = JSON.parse(transaction.extension_history);
                         } catch (e) {
+                            console.log(e);
                             extensions = [];
                         }
                     } else if (Array.isArray(transaction.extension_history)) {
@@ -649,6 +651,7 @@ const Reservations = () => {
                      try {
                          extensions = JSON.parse(transaction.extension_history);
                      } catch (e) {
+                        console.log(e);
                          extensions = [];
                      }
                  } else if (Array.isArray(transaction.extension_history)) {
