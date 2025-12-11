@@ -224,7 +224,7 @@ const Auth = () => {
       <div
         className="relative flex justify-center items-center h-screen transition-all duration-500"
         style={{
-          backgroundImage: url(/images/bg.jpg),
+          backgroundImage: `url(/images/bg.jpg)`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -239,15 +239,6 @@ const Auth = () => {
             fade ? "opacity-0 scale-95" : "opacity-100 scale-100"
           }`}
         >
-          {/* Logo Section - Added at the top center with larger size */}
-          <div className="flex justify-center mb-0.1">
-            <img 
-              src="/images/Lp.png" 
-              alt="La Piscina Logo" 
-              className="w-24 h-24 md:w-32 md:h-32 object-contain"
-            />
-          </div>
-
           {isForgotPassword ? (
             <>
               <div className="text-center mb-6">
@@ -297,7 +288,7 @@ const Auth = () => {
               <div className="text-center mb-6">
                 <h1 className="text-xl md:text-2xl font-bold">{isLogin ? "Login" : "Sign Up"}</h1>
                 <p className="text-xs md:text-sm text-gray-600 mt-1">
-                  La Piscina De Conception Resort
+                  La Piscina - Integrated Resort Management System
                 </p>
               </div>
 
@@ -482,4 +473,4 @@ const Auth = () => {
   );
 };
 
-export default Auth
+export default Auth;

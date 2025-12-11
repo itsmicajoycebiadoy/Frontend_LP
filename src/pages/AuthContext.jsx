@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../config/axios';
 
 const AuthContext = createContext();
@@ -16,300 +17,191 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Logout function
+  const logout = useCallback(async () => {
+    try {
+      // Attempt to notify backend
+      await api.post('/api/auth/logout');
+    } catch (error) {
+      console.log("Error during backend logout (Client-side clear only):", error.message);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('cart');
+      localStorage.removeItem('userReservations');
+
+      delete api.defaults.headers.common['Authorization'];
+      console.log('👋 Logout successful');
+    }
+  }, []);
+
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
       try {
         const storedUser = localStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
-        
+
         if (storedUser && storedToken) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+
+          setUser(JSON.parse(storedUser));
           setIsAuthenticated(true);
           
-          // Verify token with backend
-          try {
-            await api.get('/api/auth/verify', {
-              headers: { Authorization: `Bearer ${storedToken}` }
-            });
-          } catch (error) {
-            console.log('Token verification failed, clearing storage');
-            logout();
-          }
+          // FIXED: Tinanggal ang '/api/auth/verify' call dito dahil wala ito sa iyong UserRoutes.js.
+          // Ito ang solusyon sa 404 error na nakikita mo sa console.
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        logout();
+        // If data is corrupted, clear it
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
       } finally {
         setLoading(false);
       }
     };
 
     initAuth();
-  }, []);
+  }, [logout]);
 
-  // Login function - WITH SAFETY CHECK
+  // Login function
   const login = async (emailOrUser, password = null) => {
     try {
       console.log('🔐 Attempting login...');
       let userData, token;
-      
-      // Scenario 1: Called with email and password (normal login)
+
+      // Scenario 1: Normal Login (email, pass)
       if (typeof emailOrUser === 'string' && password) {
-        // ... (API Call logic is fine, keep it) ...
         const response = await api.post('/api/auth/login', { 
           email: emailOrUser, 
           password 
         });
-        
+
         const { data } = response;
-        if (!data.success || !data.user || !data.token) {
+        if (!data.success && !data.token) { 
+          // Note: Some backends might not send 'success: true' explicitly if using standard JWT responses,
+          // but checking for token is the most important part.
           return { success: false, message: data.message || 'Login failed' };
         }
-        
+
         userData = data.user;
         token = data.token;
       } 
-      // Scenario 2: Called with user data from direct API call (Auth.jsx)
+      // Scenario 2: Direct Object Login (Manual set)
       else if (typeof emailOrUser === 'object') {
         userData = emailOrUser;
-        token = password; // token is passed as 2nd arg
+        token = password;
       } 
       else {
         return { success: false, message: 'Invalid login parameters' };
       }
-      
-      // 🛑 SAFETY CHECK: Huwag i-save kapag walang token o "null" ang value
+
       if (!token || token === "null" || token === "undefined") {
-          console.error("❌ BLOCKED: Attempted to save invalid token:", token);
           return { success: false, message: "Invalid token received." };
       }
 
       // Store user data
       setUser(userData);
       setIsAuthenticated(true);
-      
+
       // Store in localStorage
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', token); // ✅ Safe na ito ngayon
-      
-      // Set default axios header for future requests
+      localStorage.setItem('token', token);
+
+      // Set default axios header
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      console.log('✅ Login successful');
-      return { 
-        success: true, 
-        user: userData,
-        message: 'Login successful' 
-      };
-      
+
+      return { success: true, user: userData, message: 'Login successful' };
+
     } catch (error) {
       console.error('🚨 Login error:', error);
-      // ... (Keep your error handling) ...
-      return { success: false, message: 'Login failed.' };
+      return { success: false, message: error.response?.data?.message || 'Login failed.' };
     }
   };
 
   // Register function
   const register = async (userData) => {
     try {
-      console.log('📝 Attempting registration...');
-      
-      const response = await api.post('/api/auth/register', userData);
+      // FIXED: Changed endpoint to '/api/auth/signup' to match UserRoutes.js
+      const response = await api.post('/api/auth/signup', userData);
       const { data } = response;
       
-      if (data.success) {
-        console.log('✅ Registration successful');
-        return { 
-          success: true, 
-          message: data.message,
-          user: data.user 
-        };
+      // Check for success flag or success message
+      if (data.success || data.message?.includes('success')) {
+        return { success: true, message: data.message, user: data.user };
       } else {
-        return { 
-          success: false, 
-          message: data.message || 'Registration failed' 
-        };
+        return { success: false, message: data.message || 'Registration failed' };
       }
     } catch (error) {
-      console.error('🚨 Registration error:', error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Registration failed. Please try again.';
-      
-      return { 
-        success: false, 
-        message: errorMessage 
-      };
+      return { success: false, message: error.response?.data?.message || 'Registration failed.' };
     }
   };
 
-  // Logout function
-  const logout = async () => {
-    try {
-      // Optional: Call backend logout endpoint
-      await api.post('/api/auth/logout');
-    } catch (error) {
-      console.log('Backend logout failed, proceeding with client cleanup');
-    } finally {
-      // Clear client state
-      setUser(null);
-      setIsAuthenticated(false);
-      
-      // Clear localStorage
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      localStorage.removeItem('cart');
-      localStorage.removeItem('userReservations');
-      
-      // Remove axios header
-      delete api.defaults.headers.common['Authorization'];
-      
-      console.log('👋 Logout successful');
-    }
-  };
-
-  // Update user profile
+  // Update Profile
   const updateProfile = async (userData) => {
     try {
       const response = await api.put('/api/users/profile', userData);
       const { data } = response;
-      
       if (data.success && data.user) {
-        // Update local state
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
-        return { 
-          success: true, 
-          user: data.user,
-          message: data.message 
-        };
-      } else {
-        return { 
-          success: false, 
-          message: data.message || 'Update failed' 
-        };
+        return { success: true, user: data.user, message: data.message };
       }
+      return { success: false, message: data.message };
     } catch (error) {
-      console.error('Update profile error:', error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Update failed. Please try again.';
-      
-      return { 
-        success: false, 
-        message: errorMessage 
-      };
+      return { success: false, message: error.response?.data?.message || 'Update failed' };
     }
   };
 
-  // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const response = await api.put('/api/users/change-password', {
-        currentPassword,
-        newPassword
-      });
-      
-      const { data } = response;
-      
-      return { 
-        success: data.success || false, 
-        message: data.message 
-      };
+      const response = await api.put('/api/users/change-password', { currentPassword, newPassword });
+      return { success: response.data.success, message: response.data.message };
     } catch (error) {
-      console.error('Change password error:', error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Password change failed';
-      
-      return { 
-        success: false, 
-        message: errorMessage 
-      };
+      return { success: false, message: error.response?.data?.message || 'Change password failed' };
     }
   };
 
-  // Forgot password
   const forgotPassword = async (email) => {
     try {
+      // Matches UserRoutes.js
       const response = await api.post('/api/auth/forgot-password', { email });
-      const { data } = response;
-      
-      return { 
-        success: data.success || false, 
-        message: data.message 
-      };
+      return { success: response.data.success, message: response.data.message };
     } catch (error) {
-      console.error('Forgot password error:', error);
-      
-      // Always return success for security (don't reveal if email exists)
-      return { 
-        success: true, 
-        message: 'If an account exists with this email, you will receive reset instructions.' 
-      };
+      console.log("Forgot password error:", error);
+      // Always return success to prevent email enumeration (security best practice)
+      return { success: true, message: 'If account exists, email sent.' };
     }
   };
 
-  // Reset password
   const resetPassword = async (token, newPassword) => {
     try {
-      const response = await api.post('/api/auth/reset-password', {
-        token,
-        newPassword
-      });
-      
-      const { data } = response;
-      
-      return { 
-        success: data.success || false, 
-        message: data.message 
-      };
+      // Matches UserRoutes.js
+      const response = await api.post('/api/auth/reset-password', { token, newPassword });
+      return { success: response.data.success, message: response.data.message };
     } catch (error) {
-      console.error('Reset password error:', error);
-      
-      const errorMessage = error.response?.data?.message || 
-                          'Password reset failed. The link may have expired.';
-      
-      return { 
-        success: false, 
-        message: errorMessage 
-      };
+      return { success: false, message: error.response?.data?.message || 'Reset failed' };
     }
   };
 
-  // Check if user has specific role
-  const hasRole = (role) => {
-    if (!user) return false;
-    return user.role === role || user.role === 'admin';
-  };
-
-  // Get current token
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
-  // Set token for API calls (useful when token is updated)
+  const hasRole = (role) => user && (user.role === role || user.role === 'admin');
+  const getToken = () => localStorage.getItem('token');
   const setToken = (token) => {
     localStorage.setItem('token', token);
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
 
-  // Refresh user data from backend
   const refreshUser = async () => {
     try {
+      // Note: Ensure you have a route for this in your backend user routes
       const response = await api.get('/api/users/profile');
-      const { data } = response;
-      
-      if (data.success && data.user) {
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        return { success: true, user: data.user };
+      if (response.data.success && response.data.user) {
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        return { success: true, user: response.data.user };
       }
     } catch (error) {
       console.error('Refresh user error:', error);
@@ -317,7 +209,6 @@ export const AuthProvider = ({ children }) => {
     return { success: false };
   };
 
-  // Context value
   const value = {
     user,
     loading,

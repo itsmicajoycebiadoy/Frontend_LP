@@ -1,22 +1,42 @@
-// FILE: src/pages/receptionist/receptionistdashboardcomponents/walkin/WalkInCart.jsx
-import React from 'react';
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ShoppingCart, Trash2, Plus, Minus, CreditCard, AlertCircle } from 'lucide-react';
 
-const WalkInCart = ({ cart, setCart, total, dateError, setShowConfirmModal, formData }) => {
+const WalkInCart = ({ cart, setCart, setShowConfirmModal, formData }) => {
     
-    // Logic: Update quantity inside cart
+    // --- 1. DURATION CALCULATION ---
+    const duration = useMemo(() => {
+        if (!formData.checkInDate || !formData.checkOutDate) return 1;
+        const start = new Date(formData.checkInDate);
+        const end = new Date(formData.checkOutDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 1;
+    }, [formData.checkInDate, formData.checkOutDate]);
+
+    // --- 2. COST CALCULATIONS ---
+    const amenitiesTotal = useMemo(() => {
+        return cart.reduce((total, item) => total + (Number(item.amenity_price) * item.quantity), 0) * duration;
+    }, [cart, duration]);
+
+    const entranceFeeTotal = useMemo(() => {
+        const guests = parseInt(formData.numGuest) || 0;
+        return guests * 50 * duration;
+    }, [formData.numGuest, duration]);
+
+    const grandTotal = amenitiesTotal + entranceFeeTotal;
+
+    // --- HANDLERS ---
     const handleUpdateQty = (itemName, delta) => {
         setCart(prevCart => {
             return prevCart.map(item => {
                 if (item.amenity_name === itemName) {
                     const newQty = item.quantity + delta;
                     
-                    // Check Max Limit Logic (using max_limit property from amenities)
+                    // Check Max Limit
                     if (delta > 0 && item.max_limit && newQty > item.max_limit) {
                         alert(`Limit reached! Only ${item.max_limit} available.`);
                         return item;
                     }
-
                     return { ...item, quantity: newQty > 0 ? newQty : 1 }; 
                 }
                 return item;
@@ -30,103 +50,138 @@ const WalkInCart = ({ cart, setCart, total, dateError, setShowConfirmModal, form
 
     const handleInitialSubmit = (e) => {
         e.preventDefault();
+        
+        // Validation
+        if (!formData.fullName || !formData.contactNumber) return alert("Please fill in customer details.");
         if (!formData.checkInDate || !formData.checkOutDate) return alert("Please set Check-in and Check-out dates.");
-        if (dateError) return alert("Please fix the schedule dates.");
+        
+        // Check for logic error passed from parent (if any)
+        // assuming parent handles date logic validation before passing here or we check basic validity
+        const start = new Date(formData.checkInDate);
+        const end = new Date(formData.checkOutDate);
+        if (end <= start) return alert("Check-out must be after Check-in.");
+
         if (cart.length === 0) return alert("Please select items first.");
+        
         setShowConfirmModal(true);
     };
 
-    // --- RENDER ---
     return (
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden sticky top-6">
             
             {/* Header */}
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
-                <h3 className="font-bold text-gray-800 text-lg">Amenities:</h3>
-                <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
-                    {cart.length} Items
-                </span>
-            </div>
-
-            {/* --- SCROLLABLE CART LIST --- */}
-            <div className="space-y-2 my-2 max-h-[250px] overflow-y-auto pr-2">
-                {cart.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                        <ShoppingCart className="mx-auto mb-2 opacity-20" size={32}/>
-                        <p className="text-sm italic">Cart is empty.</p>
-                    </div>
-                ) : (
-                    cart.map((item, index) => (
-                        <div key={index} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
-                            
-                            {/* Top: Name, Pax, Remove */}
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <span className="font-bold text-gray-800 text-sm block line-clamp-1" title={item.amenity_name}>
-                                        {item.amenity_name}
-                                    </span>
-                                    <span className="text-[10px] text-gray-500 font-medium block mt-0.5">
-                                        Capacity: {item.amenity_capacity || 'N/A'} Pax
-                                    </span>
-                                </div>
-                                <button type="button" onClick={() => handleRemove(item.amenity_name)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors p-1">
-                                    <Trash2 size={16}/>
-                                </button>
-                            </div>
-
-                            {/* Bottom: Price & Quantity */}
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <div className="text-[10px] text-gray-400 mb-0.5">
-                                        @ ₱{Number(item.amenity_price).toLocaleString()}
-                                    </div>
-                                    <div className="text-orange-600 font-bold text-sm">
-                                        ₱{(item.amenity_price * item.quantity).toLocaleString()}
-                                    </div>
-                                </div>
-
-                                {/* Qty Buttons */}
-                                <div className="flex items-center bg-white rounded border border-gray-300 shadow-sm h-7 overflow-hidden">
-                                    <button 
-                                        type="button"
-                                        onClick={() => handleUpdateQty(item.amenity_name, -1)}
-                                        className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-100 border-r border-gray-200 active:bg-gray-200 transition"
-                                    >
-                                        <Minus size={12} />
-                                    </button>
-                                    <div className="w-8 h-full flex items-center justify-center font-bold text-xs text-gray-800 bg-gray-50">
-                                        {item.quantity}
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => handleUpdateQty(item.amenity_name, 1)}
-                                        className={`w-7 h-full flex items-center justify-center border-l border-gray-200 active:bg-gray-200 transition ${item.quantity >= item.max_limit ? 'text-gray-300 bg-gray-50 cursor-not-allowed' : 'text-orange-600 hover:bg-orange-50'}`}
-                                        disabled={item.quantity >= item.max_limit}
-                                    >
-                                        <Plus size={12} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* --- Footer: Totals & Action --- */}
-            <div className="pt-3 border-t border-gray-100">
-                <div className="flex justify-between items-center mb-3">
-                    <span className="font-bold text-gray-600 text-sm">Total</span>
-                    <span className="font-bold text-lg text-orange-600">₱{total.toLocaleString()}</span>
+            <div className="bg-orange-500 p-4">
+                <div className="flex justify-between items-center text-white">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        <CreditCard size={20} /> Order Summary
+                    </h3>
+                    <span className="bg-white/20 text-xs font-bold px-2 py-1 rounded-full">
+                        {cart.length} Items
+                    </span>
                 </div>
-                
-                <button 
-                    type="button" 
-                    onClick={handleInitialSubmit} 
-                    disabled={cart.length === 0} 
-                    className="w-full py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 disabled:opacity-50 transition shadow-sm"
-                >
-                    Review & Confirm
-                </button>
+            </div>
+
+            {/* Cart Items */}
+            <div className="p-4">
+                <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                    {cart.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <ShoppingCart className="mx-auto mb-2 opacity-30" size={32}/>
+                            <p className="text-sm italic">Cart is empty.</p>
+                        </div>
+                    ) : (
+                        cart.map((item, index) => (
+                            <div key={index} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 relative group">
+                                
+                                {/* Top Row */}
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1 min-w-0 pr-6">
+                                        <span className="font-bold text-gray-800 text-sm block truncate" title={item.amenity_name}>
+                                            {item.amenity_name}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 font-medium block">
+                                            ₱{Number(item.amenity_price).toLocaleString()} / day
+                                        </span>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleRemove(item.amenity_name)} 
+                                        className="absolute top-2 right-2 text-gray-300 hover:text-red-500 transition-colors p-1"
+                                    >
+                                        <Trash2 size={14}/>
+                                    </button>
+                                </div>
+
+                                {/* Bottom Row: Qty & Total */}
+                                <div className="flex justify-between items-center mt-1">
+                                    {/* Qty Control */}
+                                    <div className="flex items-center bg-white rounded-lg border border-gray-200 h-7 shadow-sm">
+                                        <button 
+                                            onClick={() => handleUpdateQty(item.amenity_name, -1)}
+                                            className="px-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-l-lg h-full transition-colors"
+                                        >
+                                            <Minus size={12} />
+                                        </button>
+                                        <span className="w-6 text-center text-xs font-bold text-gray-700">{item.quantity}</span>
+                                        <button 
+                                            onClick={() => handleUpdateQty(item.amenity_name, 1)}
+                                            className={`px-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-r-lg h-full transition-colors ${item.quantity >= item.max_limit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            disabled={item.quantity >= item.max_limit}
+                                        >
+                                            <Plus size={12} />
+                                        </button>
+                                    </div>
+
+                                    {/* Line Total */}
+                                    <div className="text-right">
+                                        <span className="text-xs text-gray-400 block leading-none">x {duration} days</span>
+                                        <span className="font-bold text-gray-900 text-sm">
+                                            ₱{(item.amenity_price * item.quantity * duration).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+
+                    {/* Entrance Fee Line */}
+                    {formData.numGuest > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-bold">
+                                    {formData.numGuest}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-700">Entrance Fee</p>
+                                    <p className="text-[10px] text-blue-500">₱50 x {duration} days</p>
+                                </div>
+                            </div>
+                            <span className="font-bold text-gray-800 text-sm">₱{entranceFeeTotal.toLocaleString()}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Totals Section */}
+                <div className="pt-4 border-t border-gray-100 space-y-2">
+                    <div className="flex justify-between text-xs text-gray-500">
+                        <span>Duration</span>
+                        <span className="font-medium text-gray-700">{duration} Day(s)</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
+                        <span className="font-bold text-gray-600 text-sm">Total Amount</span>
+                        <span className="font-extrabold text-xl text-orange-600">₱{grandTotal.toLocaleString()}</span>
+                    </div>
+                    
+                    <button 
+                        type="button" 
+                        onClick={handleInitialSubmit} 
+                        disabled={cart.length === 0} 
+                        className="w-full mt-4 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md active:scale-[0.98]"
+                    >
+                        Review & Confirm
+                    </button>
+                </div>
             </div>
         </div>
     );

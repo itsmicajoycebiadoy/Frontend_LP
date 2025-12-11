@@ -1,87 +1,103 @@
 import React from 'react';
 
 const AmenitiesCard = ({ amenity, onBook }) => {
-  // --- FIX IS HERE ---
-  // Gumawa tayo ng variable para siguraduhin na boolean ang comparison.
-  // Kung ang string ay "Yes", true. Kung "No", false.
+  // --- 1. LOGIC FROM OLD FILE (PRESERVED) ---
+  // Checks for 'Yes', 'yes', or boolean true
   const isAvailable = 
     amenity.available === 'Yes' || 
     amenity.available === 'yes' || 
     amenity.available === true;
 
   const handleImageError = (e) => {
-    e.target.src = '/images/default-amenity.jpg';
+    // Ginamit ko ang 400x600 placeholder para fit sa vertical design
+    e.target.src = 'https://via.placeholder.com/400x600?text=No+Image'; 
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      {/* Image Section */}
-      <div className="h-48 bg-gray-200 relative">
-        <img 
-          src={amenity.image} 
-          alt={amenity.name}
-          className="w-full h-full object-cover"
-          onError={handleImageError}
-        />
-        {/* Availability Badge */}
-        <div className={`absolute top-3 right-3 ${
-          isAvailable  // GAMITIN ANG isAvailable DITO
-            ? 'bg-lp-orange text-white' 
-            : 'bg-red-500 text-white'
-        } px-3 py-1 rounded-full text-xs font-semibold shadow-md`}>
+    // --- 2. DESIGN & STRUCTURE (ADOPTED) ---
+    // Fixed height h-[500px] para pantay-pantay ang cards
+    <div className="relative w-full h-[500px] rounded-xl overflow-hidden shadow-xl group border border-gray-200">
+      
+      {/* BACKGROUND IMAGE (Full Card Coverage) */}
+      <img
+        src={amenity.image}
+        alt={amenity.name}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        onError={handleImageError}
+      />
+
+      {/* GRADIENT OVERLAY (Para mabasa ang text) */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent opacity-90" />
+
+      {/* TOP BADGES (Status & Type) */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+        <span className="bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-white/20">
+          {amenity.type}
+        </span>
+        
+        <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm border ${
+          isAvailable 
+            ? 'bg-green-500/90 text-white border-green-400' 
+            : 'bg-red-500/90 text-white border-red-400'
+        }`}>
           {isAvailable ? 'Available' : 'Fully Booked'}
         </div>
-        
-        {/* Type Badge */}
-        <div className="absolute top-3 left-3 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
-          {amenity.type}
-        </div>
       </div>
-      
-      {/* Content Section */}
-      <div className="p-4">
-        {/* Name */}
-        <h3 className="text-lg font-bold text-lp-dark font-header line-clamp-1 mb-2">
-          {amenity.name}
-        </h3>
+
+      {/* CONTENT OVERLAY (Bottom Section) */}
+      <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10 flex flex-col justify-end h-full">
         
-        {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-10">
-          {amenity.description}
-        </p>
-        
-        {/* Capacity and Price */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-            </svg>
-            <span>Up to {amenity.capacity} people</span>
-          </div>
-          <div className="text-lg font-bold text-lp-orange">
-            ₱{amenity.price.toLocaleString()}
-          </div>
+        {/* Spacer to push content down */}
+        <div className="flex-grow"></div>
+
+        {/* Amenity Details with Hover Effect */}
+        <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+            <h3 className="text-2xl font-bold mb-2 leading-tight text-white drop-shadow-md">
+              {amenity.name}
+            </h3>
+            
+            <p className="text-gray-200 text-sm mb-4 line-clamp-2 opacity-90">
+              {amenity.description}
+            </p>
+
+            {/* Capacity & Price Row */}
+            <div className="flex items-center justify-between mb-5 border-t border-white/20 pt-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Up to {amenity.capacity} pax</span>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-orange-400 drop-shadow-sm">
+                    ₱{Number(amenity.price).toLocaleString()}
+                </p>
+              </div>
+            </div>
+            
+            {/* BUTTON ACTION (Uses onBook function) */}
+            <button 
+              onClick={() => onBook(amenity)}
+              disabled={!isAvailable}
+              className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-lg flex items-center justify-center gap-2 ${
+                isAvailable 
+                  ? 'bg-white text-orange-600 hover:bg-orange-50 active:scale-95' 
+                  : 'bg-gray-600/50 text-gray-300 cursor-not-allowed border border-white/10'
+              }`}
+            >
+              {isAvailable ? (
+                  <>
+                    Add to Booking
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </>
+              ) : (
+                  'Unavailable'
+              )}
+            </button>
         </div>
-        
-        {/* Book Now Button */}
-        <button 
-          onClick={() => onBook(amenity)}
-          disabled={!isAvailable} // GAMITIN ANG isAvailable DITO
-          className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-            isAvailable 
-              ? 'bg-lp-blue hover:bg-lp-blue-hover text-white cursor-pointer transform hover:scale-[1.02]' 
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-            <line x1="16" x2="16" y1="2" y2="6"/>
-            <line x1="8" x2="8" y1="2" y2="6"/>
-            <line x1="3" x2="21" y1="10" y2="10"/>
-          </svg>
-          {isAvailable ? '+ Add Booking' : 'Unavailable'}
-        </button>
       </div>
     </div>
   );

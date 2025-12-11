@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import { useAuth } from "../AuthContext";
 import axios from "axios";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import { useAuth } from "../AuthContext";
 
-// IMPORT NEW COMPONENTS
+// Components
+import Header from "../../components/Header"; // Updated Header
+import Footer from "../../components/Footer";
+
+// Customer Sections
 import HeroSection from "../../components/customerdashboardcomponents/HeroSection";
 import WelcomeSection from "../../components/customerdashboardcomponents/WelcomeSection";
 import FeaturedAmenities from "../../components/customerdashboardcomponents/FeaturedAmenities";
@@ -18,9 +20,9 @@ import ReviewModal from "../../components/customerdashboardcomponents/ReviewModa
 const API_URL = "http://localhost:5000";
 
 const CustomerDashboard = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth(); // Kailangan natin ang logout function dito
 
-    // --- STATE MANAGEMENT ---
+    // State
     const [reviews, setReviews] = useState([]);
     const [featuredAmenities, setFeaturedAmenities] = useState([]);
     const [isLoadingReviews, setIsLoadingReviews] = useState(true);
@@ -29,22 +31,21 @@ const CustomerDashboard = () => {
     const [showFeedbackSuccess, setShowFeedbackSuccess] = useState(false);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-    // --- FETCH DATA ---
+    // Fetch Data
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setIsLoadingReviews(true);
                 setIsLoadingData(true);
 
-                // Fetch Amenities
+                // Fetch Featured Amenities
                 try {
                     const response = await axios.get(`${API_URL}/api/amenities/featured`);
                     if (response.data && response.data.length > 0) {
                         setFeaturedAmenities(response.data);
                     } else { throw new Error("No data"); }
                 } catch (err) {
-                    console.log(err);
-                    // Fallback Data
+                    // Fallback
                     setFeaturedAmenities([
                         { id: 1, name: "Refreshing Pool", description: "Dive into relaxation.", image: "pool.png" },
                         { id: 2, name: "Grand Event Hall", description: "Perfect venue for celebrations.", image: "eventhall.png" },
@@ -69,7 +70,6 @@ const CustomerDashboard = () => {
                     }));
                     setReviews(formattedReviews.filter(r => parseFloat(r.average) >= 4.0));
                 } catch (error) { 
-                    console.log(error);
                     setReviews([]); 
                 }
 
@@ -79,7 +79,7 @@ const CustomerDashboard = () => {
         fetchData();
     }, []);
 
-    // --- SUBMIT REVIEW LOGIC ---
+    // Review Submit
     const handleReviewSubmit = async (payload) => {
         setIsSubmitting(true);
         try {
@@ -107,15 +107,17 @@ const CustomerDashboard = () => {
     };
 
     return (
-        // FIX: Ensure full width and no horizontal scroll
-        <div className="min-h-screen flex flex-col font-body bg-white w-full overflow-x-hidden relative">
+        <div className="min-h-screen flex flex-col font-sans bg-white w-full overflow-x-hidden relative">
             
-            {/* Header Sticky Wrapper */}
-            <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
-                <Header user={user} />
+            {/* --- UPDATED HEADER USAGE ---
+               Note: Sa Customer, hindi kailangan ng activeTab/setActiveTab 
+               dahil URL/Router ang gamit nila.
+            */}
+            <div className="sticky top-0 z-50 bg-white w-full">
+                <Header user={user} onLogout={logout} />
             </div>
 
-            {/* Sections - They are inherently full width if components are styled correctly */}
+            {/* Main Content Sections */}
             <main className="flex-1 w-full">
                 <HeroSection />
                 <WelcomeSection />
@@ -148,7 +150,10 @@ const CustomerDashboard = () => {
             {showFeedbackSuccess && (
                 <div className="fixed bottom-8 right-8 z-[60] bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-right duration-300">
                     <CheckCircle2 size={24} />
-                    <div><h4 className="font-bold text-sm">Thank You!</h4><p className="text-xs text-green-100">Review submitted successfully.</p></div>
+                    <div>
+                        <h4 className="font-bold text-sm">Thank You!</h4>
+                        <p className="text-xs text-green-100">Review submitted successfully.</p>
+                    </div>
                 </div>
             )}
         </div>

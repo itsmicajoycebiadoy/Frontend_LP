@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import pool from "../../../assets/pool.png";
-import eventhall from "../../../assets/eventhall.png";
-import cottage from "../../../assets/cottage.png";
+import pool from "../../assets/pool.png";
+import eventhall from "../../assets/eventhall.png";
+import cottage from "../../assets/cottage.png";
 
 const FeaturedAmenities = ({ isLoading, amenities, apiUrl }) => {
     const navigate = useNavigate();
@@ -18,7 +18,7 @@ const FeaturedAmenities = ({ isLoading, amenities, apiUrl }) => {
             const section = document.querySelector('.amenities-section');
             if (section) {
                 const rect = section.getBoundingClientRect();
-                const isSectionVisible = rect.top < window.innerHeight * 0.8;
+                const isSectionVisible = rect.top < window.innerHeight * 0.9;
                 
                 if (isSectionVisible && !sectionVisible) {
                     setSectionVisible(true);
@@ -44,7 +44,7 @@ const FeaturedAmenities = ({ isLoading, amenities, apiUrl }) => {
     };
 
     return (
-        <section className={`amenities-section py-16 md:py-24 bg-white border-b border-gray-100 transition-all duration-700 ${
+        <section className={`amenities-section py-16 md:py-24  ${
             sectionVisible ? 'opacity-100' : 'opacity-0'
         }`}>
             <div className="container mx-auto px-4 sm:px-6">

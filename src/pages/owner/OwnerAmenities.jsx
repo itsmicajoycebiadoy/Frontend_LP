@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../config/axios';
-import { Plus, Edit, Trash2, X, Save, UploadCloud, Filter, Layers, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save, UploadCloud, Filter, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 
 const OwnerAmenities = ({ amenities, fetchAmenities }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null); 
+    
+    // --- LOADING STATE ---
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -28,18 +31,14 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         available: true,
     });
 
-    // FIXED: Dinagdag ang 'Others'
-    const categories = ['All', 'Kubo', 'Cabin', 'Table', 'Pool', 'Room', 'Others'];
+    // --- UPDATED CATEGORIES: Removed 'Cabin' and 'Room' ---
+    const categories = ['All', 'Kubo', 'Table', 'Others'];
 
-    // Get backend URL from env
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     
-    // --- HELPER: Get Image URL (Dynamic for Deploy) ---
     const getImageUrl = (imagePath) => {
         if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
-        if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) return imagePath; // Cloudinary URL
-        
-        // Local File Path assumption
+        if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) return imagePath; 
         return `${backendUrl}/uploads/am_images/${imagePath}`;
     };
 
@@ -54,6 +53,7 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         setPreviewUrl(null);
         setEditingId(null);
         setIsAdding(false);
+        setIsSubmitting(false); // Reset loading state
     };
 
     const handleFileChange = (e) => {
@@ -64,7 +64,6 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         }
     };
 
-    // FIXED: startEditing function
     const startEditing = (amenity) => {
         setEditingId(amenity.id);
         setIsAdding(false);
@@ -72,60 +71,65 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
             name: amenity.name,
             description: amenity.description,
             price: amenity.price,
-            // FIX: Ensure correct type (lowercase) is selected
             type: amenity.type?.toLowerCase() || 'kubo', 
             capacity: amenity.capacity,
             quantity: (amenity.quantity !== undefined && amenity.quantity !== null) ? amenity.quantity : 0, 
             booked: amenity.booked || 0,
-            // FIX: Tiyakin na ang available state ay boolean (true/false)
             available: amenity.available === 'Yes' || amenity.available === true,
         });
-        
         setPreviewUrl(getImageUrl(amenity.image));
         setSelectedFile(null);
     };
 
-    // FIXED: handleSave function for correct FormData and status logic
+    // --- SAVE FUNCTION ---
     const handleSave = async (id = null) => {
-        try {
-            if(!form.name || !form.price) {
-                alert("Please fill in Name and Price.");
-                return;
-            }
+        // Validation
+        if(!form.name || !form.price) {
+            alert("Please fill in Name and Price.");
+            return;
+        }
 
+        // Prevent double submission
+        if (isSubmitting) return;
+
+        // 1. Start Loading
+        setIsSubmitting(true);
+
+        try {
             const formData = new FormData();
             formData.append('name', form.name);
             formData.append('description', form.description);
-            
-            // FIX: Ipadala ang values bilang strings para sa FormData
             formData.append('price', String(form.price)); 
-            formData.append('type', form.type); // Ipinapadala ang tamang type
+            formData.append('type', form.type);
             formData.append('capacity', String(form.capacity));
             
             const finalQty = form.quantity !== '' ? form.quantity : 0;
             formData.append('quantity', String(finalQty));
-            
-            // FIX: Status logic na gumagamit ng form.available state
             formData.append('status', form.available ? 'available' : 'unavailable');
             
             if (selectedFile) {
                 formData.append('image', selectedFile);
             }
 
-            // Walang binago sa config, tama na ito
             const config = { headers: { 'Content-Type': 'multipart/form-data' } };
 
             if (id) {
                 await api.put(`/api/owner/amenities/${id}`, formData, config);
+                alert("Amenity updated successfully!"); 
             } else {
                 await api.post('/api/owner/amenities', formData, config);
+                alert("New amenity added successfully!"); 
             }
             
             await fetchAmenities();
             resetForm();
+
         } catch (error) {
             console.error(error);
             alert('Error saving amenity: ' + (error.response?.data?.message || error.message || 'Server did not respond.'));
+        } finally {
+            // 2. Stop Loading
+            setIsSubmitting(false);
         }
     };
 
@@ -141,15 +145,14 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
             await fetchAmenities();
             setDeleteModalOpen(false);
             setItemToDelete(null);
+            alert("Amenity deleted successfully.");
         } catch {
             alert('Error deleting amenity');
         }
     };
 
     const getAvailabilityDisplay = (amenity) => {
-        // Tiyakin na ang amenity.available ay boolean para sa display logic
         const isAvailableInDb = amenity.available === true || amenity.available === 'Yes';
-        
         const total = (amenity.quantity !== undefined && amenity.quantity !== null) ? amenity.quantity : 0;
         const used = amenity.booked || 0;
         const remaining = total - used;
@@ -218,32 +221,28 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 </div>
             </div>
 
-            {/* Inventory & Type (INILIPAT ANG AVAILABILITY DITO) */}
+            {/* Inventory & Type */}
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Total Units (Inventory)</label>
                     <div className="relative">
                         <input 
-                            type="number" 
-                            min="0"
-                            value={form.quantity} 
+                            type="number" min="0" value={form.quantity} 
                             onChange={e => setForm({...form, quantity: parseInt(e.target.value) || 0})} 
                             className="w-full p-2 border border-gray-300 rounded-md focus:ring-lp-orange outline-none" 
                         />
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1">Set to 0 to mark as unavailable.</p>
                 </div>
                 <div>
                     <label className="text-xs text-gray-500 font-medium mb-1 block">Type</label>
                     <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md bg-white focus:ring-lp-orange outline-none">
-                        {/* Gamitin ang categories list at i-skip ang 'All' */}
                         {categories.filter(c => c !== 'All').map(c => (
                             <option key={c} value={c.toLowerCase()}>{c}</option>
                         ))}
                     </select>
                 </div>
             </div>
-            {/* Availability Toggle (Standalone, malinis tingnan) */}
+            {/* Availability Toggle */}
             <div className='pt-2'>
                 <label className="text-xs text-gray-500 font-medium mb-1 block">Availability Status</label>
                 <button 
@@ -259,14 +258,13 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
 
     const renderAddModal = () => (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-            {/* RESPONSIVE: w-full max-w-2xl mx-4 (adds margin on mobile) */}
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden transform transition-all scale-100 relative">
                 <div className="flex justify-between items-center p-4 md:p-6 border-b">
                     <h3 className="text-lg md:text-xl font-bold text-lp-orange flex items-center gap-2">
                         <div className="p-2 bg-orange-100 rounded-lg"><Plus size={20}/></div>
                         Add New Amenity
                     </h3>
-                    <button onClick={resetForm} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"><X size={24}/></button>
+                    <button onClick={resetForm} disabled={isSubmitting} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"><X size={24}/></button>
                 </div>
                 <div className="p-4 md:p-6 max-h-[70vh] overflow-y-auto">
                     <div className="grid grid-cols-1 gap-6">
@@ -274,9 +272,24 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                     </div>
                 </div>
                 <div className="p-4 md:p-6 border-t bg-gray-50 flex items-center gap-3">
-                    <button onClick={resetForm} className="flex-1 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-100 text-gray-600 font-medium transition-colors">Cancel</button>
-                    <button onClick={() => handleSave()} className="flex-[2] bg-lp-orange text-white py-2.5 rounded-xl hover:bg-orange-600 flex items-center justify-center gap-2 font-medium shadow-md transition-all hover:shadow-lg">
-                        <Save size={18} /> Save Amenity
+                    <button onClick={resetForm} disabled={isSubmitting} className="flex-1 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-100 text-gray-600 font-medium transition-colors disabled:opacity-50">Cancel</button>
+                    
+                    {/* --- BUTTON SA MODAL NA MAY LOADING STATE --- */}
+                    <button 
+                        onClick={() => handleSave()} 
+                        disabled={isSubmitting} // DISABLE KAPAG NAGLOLOLD
+                        className={`flex-[2] bg-lp-orange text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-medium shadow-md transition-all 
+                        ${isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-orange-600 hover:shadow-lg'}`}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 size={18} className="animate-spin" /> Saving...
+                            </>
+                        ) : (
+                            <>
+                                <Save size={18} /> Save Amenity
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
@@ -285,7 +298,6 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
 
     return (
         <div className="space-y-8 p-4 md:p-6 bg-gray-50 min-h-screen relative">
-            {/* Header - Responsive Flex Direction */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">Amenities</h2>
@@ -300,14 +312,12 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 )}
             </div>
 
-            {/* Filter Tabs - Scrollable on Mobile */}
             {!isAdding && !editingId && (
                 <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
                     {categories.map(cat => {
                         const count = cat === 'All' 
                             ? amenities.length 
                             : amenities.filter(a => a.type?.toLowerCase() === cat.toLowerCase()).length;
-
                         return (
                             <button
                                 key={cat}
@@ -325,10 +335,8 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 </div>
             )}
 
-            {/* Portal for Add Modal */}
             {isAdding && createPortal(renderAddModal(), document.body)}
 
-            {/* Grid Display - Responsive Columns */}
             {filteredAmenities.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-10">
                     {filteredAmenities.map((amenity) => {
@@ -342,12 +350,25 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                              <div className="p-5 flex flex-col h-full bg-white">
                                  <div className="flex justify-between items-center mb-4 pb-2">
                                      <span className="font-bold text-lp-orange flex items-center gap-2"><Edit size={16}/> Editing...</span>
-                                     <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded-full"><X size={18} className="text-gray-400"/></button>
+                                     <button onClick={resetForm} disabled={isSubmitting} className="p-1 hover:bg-gray-100 rounded-full"><X size={18} className="text-gray-400"/></button>
                                  </div>
                                  {renderFormFields()}
                                  <div className="mt-5 flex gap-3">
-                                     <button onClick={resetForm} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 text-sm font-medium">Cancel</button>
-                                     <button onClick={() => handleSave(amenity.id)} className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 text-sm font-medium shadow-md">Save Changes</button>
+                                     <button onClick={resetForm} disabled={isSubmitting} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 text-sm font-medium disabled:opacity-50">Cancel</button>
+                                     
+                                     {/* --- BUTTON SA INLINE EDIT NA MAY LOADING STATE --- */}
+                                     <button 
+                                        onClick={() => handleSave(amenity.id)} 
+                                        disabled={isSubmitting} // DISABLE DITO
+                                        className={`flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow-md flex items-center justify-center gap-2
+                                        ${isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-green-700'}`}
+                                     >
+                                         {isSubmitting ? (
+                                            <><Loader2 size={16} className="animate-spin"/> Saving...</>
+                                         ) : (
+                                            "Save Changes"
+                                         )}
+                                     </button>
                                  </div>
                              </div>
                          ) : (
@@ -355,29 +376,23 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                              <>
                                  <div className="relative h-56 group cursor-pointer" onClick={() => startEditing(amenity)}>
                                      <img 
-                                         src={getImageUrl(amenity.image)} // UPDATED: Use helper
+                                         src={getImageUrl(amenity.image)} 
                                          alt={amenity.name}
                                          className="w-full h-full object-cover" 
                                          onError={(e) => {e.target.src = 'https://via.placeholder.com/400x300?text=No+Image'}}
                                      />
                                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                                     
-                                     {/* Category Badge */}
                                      <div className="absolute top-3 left-3">
                                          <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-bold rounded-full shadow-sm uppercase tracking-wide">
                                              {amenity.type}
                                          </span>
                                      </div>
-
-                                     {/* Dynamic Availability Badge */}
                                      <div className="absolute top-3 right-3">
                                          <span className={`px-3 py-1 text-xs rounded-full font-bold shadow-sm flex items-center gap-1 ${availability.colorClass}`}>
                                              <div className={`w-2 h-2 rounded-full bg-white ${availability.pulse ? 'animate-pulse' : ''}`}></div>
                                              {availability.text}
                                          </span>
                                      </div>
-
-                                     {/* Name & Price Overlay */}
                                      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                                          <h3 className="text-xl font-bold leading-tight drop-shadow-md mb-1">{amenity.name}</h3>
                                          <p className="text-orange-300 font-bold text-lg drop-shadow-sm">₱{parseFloat(amenity.price).toLocaleString()}</p>
@@ -435,10 +450,8 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 </div>
             )}
 
-            {/* ================= DELETE CONFIRMATION MODAL ================= */}
             {deleteModalOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-                    {/* RESPONSIVE MODAL: max-w-sm w-full mx-4 */}
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden transform transition-all scale-100">
                         <div className="p-6 text-center">
                             <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6">
@@ -446,7 +459,7 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Amenity?</h3>
                             <p className="text-sm text-gray-500 leading-relaxed">
-                                Are you sure you want to delete this? This action cannot be undone and will remove it from the inventory.
+                                Are you sure you want to delete this? This action cannot be undone.
                             </p>
                         </div>
                         <div className="bg-gray-50 px-6 py-4 flex gap-3">

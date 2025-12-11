@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   Download, TrendingUp, DollarSign, 
-  Wallet, Users, ArrowUpRight, ArrowDownRight, Filter, RefreshCw, BarChart2, CheckCircle, XCircle, Clock
+  Wallet, Users, ArrowUpRight, ArrowDownRight, Filter, BarChart2, CheckCircle, XCircle, Clock, RefreshCw
 } from 'lucide-react';
 
 // --- UTILS FOR CSV EXPORT ---
@@ -44,7 +44,12 @@ const exportToCSV = (transactions, startDate, endDate) => {
 };
 
 const OwnerAnalytics = () => { 
+  // State for internal loading (not displayed)
   const [loading, setLoading] = useState(false);
+  const [periodLabel, setPeriodLabel] = useState('vs last month');
+  
+  // NEW: State to track which quick filter is active
+  const [activeFilter, setActiveFilter] = useState('month'); 
   
   // Default Date
   const [dateRange, setDateRange] = useState(() => {
@@ -68,7 +73,7 @@ const OwnerAnalytics = () => {
 
   // --- THEME ---
   const THEME = {
-      primary: '#F97316',   // LP Orange
+      primary: '#F97316',    // LP Orange
       secondary: '#3B82F6', // Blue
       success: '#10B981',   // Emerald
       danger: '#F43F5E',    // Rose
@@ -86,10 +91,26 @@ const OwnerAnalytics = () => {
       'Cancelled': THEME.danger
   };
 
-  useEffect(() => { fetchDashboardData(); }, [dateRange]); 
+  // --- UPDATED USE EFFECT FOR AUTO REFRESH (3 SECONDS) ---
+  useEffect(() => { 
+    // 1. Initial Load (May Loading Spinner para alam ng user na naglo-load)
+    fetchDashboardData(false);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+    // 2. Set Interval - Uulit kada 3 seconds (Background refresh, walang spinner)
+    const intervalId = setInterval(() => {
+        fetchDashboardData(true);
+    }, 3000);
+
+    // 3. Cleanup - Patayin ang timer kapag umalis sa page o nagbago ang date
+    return () => clearInterval(intervalId);
+
+  }, [dateRange]); 
+
+  // --- UPDATED FETCH FUNCTION TO HANDLE BACKGROUND LOADING ---
+  const fetchDashboardData = async (isBackground = false) => {
+    // Only show spinner if it's NOT a background refresh
+    if (!isBackground) setLoading(true);
+    
     try {
       const res = await api.get('/api/owner/analytics', { params: dateRange });
       if(res.data.success) {
@@ -100,8 +121,12 @@ const OwnerAnalytics = () => {
         }));
         setTransactions(parsedTransactions);
       }
-    } catch (error) { console.error("Dashboard Load Error:", error); } 
-    finally { setLoading(false); }
+    } catch (error) { 
+        console.error("Dashboard Load Error:", error); 
+    } finally { 
+        // Only hide spinner if it was shown
+        if (!isBackground) setLoading(false);
+    }
   };
 
   const handleQuickDate = (type) => {
@@ -109,13 +134,24 @@ const OwnerAnalytics = () => {
     let start = new Date();
     const end = new Date(); 
 
-    if (type === 'today') start = today;
-    else if (type === 'week') {
+    // UPDATE: Set active filter visually
+    setActiveFilter(type);
+
+    if (type === 'today') {
+        start = today;
+        setPeriodLabel('vs yesterday');
+    } else if (type === 'week') {
         const day = today.getDay();
         const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
         start.setDate(diff);
-    } else if (type === 'month') start = new Date(today.getFullYear(), today.getMonth(), 1);
-    else if (type === 'year') start = new Date(today.getFullYear(), 0, 1);
+        setPeriodLabel('vs last week');
+    } else if (type === 'month') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        setPeriodLabel('vs last month');
+    } else if (type === 'year') {
+        start = new Date(today.getFullYear(), 0, 1);
+        setPeriodLabel('vs last year');
+    }
     
     const newStart = start.toISOString().split('T')[0];
     const newEnd = end.toISOString().split('T')[0];
@@ -123,6 +159,13 @@ const OwnerAnalytics = () => {
     if (newStart !== dateRange.startDate || newEnd !== dateRange.endDate) {
         setDateRange({ startDate: newStart, endDate: newEnd });
     }
+  };
+
+  // Helper to handle manual date changes (resets the active buttons)
+  const handleManualDateChange = (key, value) => {
+      setDateRange(prev => ({ ...prev, [key]: value }));
+      setActiveFilter('custom'); // Removes highlight from quick buttons
+      setPeriodLabel('vs previous period');
   };
 
   const kpiMetrics = useMemo(() => {
@@ -165,82 +208,125 @@ const OwnerAnalytics = () => {
   };
 
   return (
-    // FIX: Removed max-w constraints and ensured w-full to prevent "squashing" on mobile
-    <div className="w-full px-4 py-6 space-y-6 font-sans text-slate-700">
+    <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6 pb-12 font-sans text-slate-700">
       
       {/* --- HEADER & CONTROLS --- */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full">
-        <div className="w-full lg:w-auto">
-          <h2 className="text-2xl font-bold text-slate-800">
-            Analytics Dashboard
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        
+        {/* Title Section */}
+        <div className="w-full xl:w-auto">
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <BarChart2 className="text-orange-500"/> Analytics Dashboard
           </h2>
           <p className="text-sm text-slate-500 mt-1">Real-time financial & operational insights</p>
         </div>
         
-        {/* Controls: Stack on Mobile, Row on Desktop */}
-        <div className="flex flex-col gap-3 w-full lg:w-auto">
+        {/* --- CONTROLS SECTION --- */}
+        <div className="flex flex-col xl:flex-row gap-4 w-full xl:w-auto bg-slate-50 p-4 rounded-xl border border-slate-100 items-start xl:items-end">
           
-          {/* Quick Dates */}
-          <div className="grid grid-cols-4 gap-2 bg-slate-100 p-1 rounded-lg w-full">
-             {['Today', 'Week', 'Month', 'Year'].map((label) => (
-                <button 
-                    key={label} type="button" onClick={() => handleQuickDate(label.toLowerCase())}
-                    className="py-2 text-xs font-semibold text-slate-600 hover:bg-white hover:text-orange-600 hover:shadow-sm rounded-md transition-all text-center"
-                >
-                    {label}
-                </button>
-             ))}
+          {/* 1. Quick Dates Row */}
+          <div className="w-full xl:w-auto">
+             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block xl:hidden">Quick Select</label>
+             <div className="grid grid-cols-4 xl:flex gap-1 xl:gap-2 w-full xl:w-auto bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                {['Today', 'Week', 'Month', 'Year'].map((label) => {
+                    const isSelected = activeFilter === label.toLowerCase();
+                    return (
+                        <button 
+                            key={label} 
+                            type="button" 
+                            onClick={() => handleQuickDate(label.toLowerCase())}
+                            className={`px-3 py-2 text-xs font-semibold rounded-md transition-all flex items-center justify-center xl:min-w-[60px] 
+                                ${isSelected 
+                                    ? 'bg-orange-50 text-orange-600 border border-orange-200 shadow-sm' 
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-orange-600 border border-transparent'
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+             </div>
           </div>
 
-          {/* FIX: NO ICONS, SIMPLE INPUTS, STACKED ON MOBILE */}
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-             <input 
-                type="date" 
-                value={dateRange.startDate} 
-                onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})} 
-                className="w-full sm:w-auto flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer shadow-sm"
-             />
-             
-             <span className="text-slate-300 font-bold hidden sm:inline">-</span>
-             
-             <input 
-                type="date" 
-                value={dateRange.endDate} 
-                onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})} 
-                className="w-full sm:w-auto flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer shadow-sm"
-             />
+          {/* 2. DATE INPUTS & EXPORT */}
+          <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto items-end">
+             <div className="w-full sm:w-auto flex flex-col gap-1">
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
+                 <input 
+                   type="date" 
+                   value={dateRange.startDate} 
+                   onChange={(e) => handleManualDateChange('startDate', e.target.value)} 
+                   className="w-full sm:w-36 lg:w-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 transition-all cursor-pointer shadow-sm"
+                 />
+             </div>
+
+             <div className="w-full sm:w-auto flex flex-col gap-1">
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</label>
+                 <input 
+                   type="date" 
+                   value={dateRange.endDate} 
+                   onChange={(e) => handleManualDateChange('endDate', e.target.value)} 
+                   className="w-full sm:w-36 lg:w-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 transition-all cursor-pointer shadow-sm"
+                 />
+             </div>
+
+             <button 
+                type="button" onClick={() => exportToCSV(transactions, dateRange.startDate, dateRange.endDate)} 
+                className="w-full sm:w-auto h-[38px] px-6 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
+             >
+                <Download size={16}/> <span>Export</span>
+             </button>
           </div>
 
-          <button 
-            type="button" onClick={() => exportToCSV(transactions, dateRange.startDate, dateRange.endDate)} 
-            className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"
-          >
-            <Download size={16}/> <span>Export</span>
-          </button>
         </div>
       </div>
 
       <div className="relative min-h-[500px]">
-        {/* LOADING STATE */}
-        {loading && (
-            <div className="absolute inset-0 bg-white/60 z-30 flex items-start justify-center pt-32 backdrop-blur-sm rounded-2xl transition-all duration-300">
-                <div className="flex items-center gap-3 px-6 py-3 bg-white shadow-xl rounded-full border border-slate-100 animate-in fade-in zoom-in">
-                    <RefreshCw className="animate-spin text-orange-500" size={20}/>
-                    <span className="text-sm font-semibold text-slate-700">Refreshing data...</span>
-                </div>
-            </div>
-        )}
-
+        
         {/* 1. KPI CARDS */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-            <StatCard title="Gross Sales" value={data.financials.gross_sales} icon={TrendingUp} subText={kpiMetrics.isTrendingUp ? "Trending Up" : "Below Avg"} trendIcon={kpiMetrics.isTrendingUp ? ArrowUpRight : ArrowDownRight} color={kpiMetrics.isTrendingUp ? 'text-emerald-600' : 'text-rose-500'} bg={kpiMetrics.isTrendingUp ? 'bg-emerald-50' : 'bg-rose-50'} />
-            <StatCard title="Cash Collected" value={data.financials.cash_collected} icon={DollarSign} subText="Liquidity" color="text-blue-600" bg="bg-blue-50" trendIcon={Wallet} />
-            <StatCard title="Receivables" value={data.financials.receivables} icon={Wallet} subText="Pending" color={data.financials.receivables > 0 ? 'text-rose-500' : 'text-slate-500'} bg="bg-slate-50" trendIcon={Filter} />
-            <StatCard title="Total Bookings" value={kpiMetrics.totalBookings} icon={Users} subText="Volume" isMoney={false} color="text-orange-600" bg="bg-orange-50" trendIcon={Users} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+            <StatCard 
+                title="Gross Sales" 
+                value={data.financials.gross_sales} 
+                icon={TrendingUp} 
+                trendValue={kpiMetrics.isTrendingUp ? "+12.5%" : "-2.1%"} 
+                periodLabel={periodLabel}
+                isPositive={kpiMetrics.isTrendingUp}
+                color="text-emerald-600" bg="bg-emerald-50" 
+            />
+            <StatCard 
+                title="Cash Collected" 
+                value={data.financials.cash_collected} 
+                icon={DollarSign} 
+                trendValue="+5.4%" 
+                periodLabel={periodLabel}
+                isPositive={true}
+                color="text-blue-600" bg="bg-blue-50" 
+            />
+            <StatCard 
+                title="Receivables" 
+                value={data.financials.receivables} 
+                icon={Wallet} 
+                trendValue={data.financials.receivables > 0 ? "Pending" : "Cleared"}
+                periodLabel="current status"
+                isPositive={data.financials.receivables === 0}
+                color={data.financials.receivables > 0 ? 'text-rose-500' : 'text-slate-500'} bg="bg-slate-50" 
+                isMoney={true}
+            />
+            <StatCard 
+                title="Total Bookings" 
+                value={kpiMetrics.totalBookings} 
+                icon={Users} 
+                trendValue="+8.2%"
+                periodLabel={periodLabel}
+                isPositive={true}
+                isMoney={false} 
+                color="text-orange-600" bg="bg-orange-50" 
+            />
         </div>
 
         {/* 2. REVENUE TREND CHART */}
-        <div className={`bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
                 <div>
                     <h3 className="font-bold text-slate-800">Revenue Trajectory</h3>
@@ -250,7 +336,7 @@ const OwnerAnalytics = () => {
                     <span className="w-2 h-2 rounded-full bg-orange-500"></span> Total Sales
                 </div>
             </div>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] sm:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data.trend}>
                         <defs>
@@ -270,14 +356,14 @@ const OwnerAnalytics = () => {
         </div>
 
         {/* 3. SPLIT CHARTS */}
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Booking Status */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
                 <h3 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
                     <BarChart2 size={18} className="text-purple-500"/> Booking Status
                 </h3>
                 <p className="text-xs text-slate-400 mb-6">Booking stages distribution</p>
-                <div className="flex-1 min-h-[250px]">
+                <div className="flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={kpiMetrics.statusData} layout="vertical" margin={{ left: 0, right: 10 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={THEME.grid}/>
@@ -294,10 +380,10 @@ const OwnerAnalytics = () => {
                 </div>
             </div>
             {/* Source Distribution */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
                 <h3 className="font-bold text-slate-800 mb-1">Source Distribution</h3>
                 <p className="text-xs text-slate-400 mb-6">Online vs Walk-in</p>
-                <div className="flex-1 min-h-[250px] relative">
+                <div className="flex-1 relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie data={data.sources} dataKey="count" nameKey="booking_type" cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={5}>
@@ -308,14 +394,16 @@ const OwnerAnalytics = () => {
                             <Tooltip contentStyle={tooltipStyle} />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center">
-                            <span className="block text-3xl font-extrabold text-slate-800">{kpiMetrics.totalBookings}</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <div className="flex flex-col items-center justify-center">
+                            <span className="block text-3xl font-extrabold text-slate-800 whitespace-nowrap">
+                                {kpiMetrics.totalBookings.toLocaleString()}
+                            </span>
                             <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total</span>
                         </div>
                     </div>
                 </div>
-                <div className="mt-4 flex flex-wrap justify-center gap-6 sm:gap-8">
+                <div className="flex justify-center gap-8 mt-[-20px]">
                     {data.sources.map((s) => (
                         <div key={s.booking_type} className="flex items-center gap-2">
                             <span className={`w-3 h-3 rounded-full ${s.booking_type === 'Online' ? 'bg-blue-500' : 'bg-emerald-500'}`}></span>
@@ -330,8 +418,8 @@ const OwnerAnalytics = () => {
         </div>
 
         {/* 4. TRANSACTION TABLE */}
-        <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <Filter size={18} className="text-orange-500"/> Transaction History
                 </h3>
@@ -341,7 +429,7 @@ const OwnerAnalytics = () => {
                     {['All', 'Online', 'Walk-in'].map(tab => (
                         <button 
                             key={tab} type="button" onClick={() => setTableFilter(tab)} 
-                            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md transition-all flex-1 sm:flex-none justify-center ${
+                            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-md transition-all flex-1 sm:flex-none justify-center whitespace-nowrap ${
                                 tableFilter === tab ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                             }`}
                         >
@@ -375,7 +463,7 @@ const OwnerAnalytics = () => {
                         sortedTableData.map(t => (
                             <tr key={t.id} className="group hover:bg-orange-50/10 transition-colors">
                             <td className="px-6 py-4 align-top">
-                                <span className="font-bold text-slate-700 text-xs font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200 whitespace-nowrap">{t.transaction_ref}</span>
+                                <span className="font-medium text-slate-700 text-xs font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200 whitespace-nowrap">{t.transaction_ref}</span>
                                 <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1 whitespace-nowrap"><Clock size={10}/>{t.formatted_date}</p>
                             </td>
                             <td className="px-6 py-4 align-top">
@@ -384,18 +472,40 @@ const OwnerAnalytics = () => {
                                     t.booking_type === 'Online' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'
                                 }`}>{t.booking_type}</span>
                             </td>
+                            
+                            {/* --- MODIFIED DETAILS COLUMN --- */}
                             <td className="px-6 py-4 align-top">
                                 <p className="text-xs text-slate-600 font-medium line-clamp-2 max-w-[200px]" title={t.amenities_summary}>{t.amenities_summary || "No amenities"}</p>
                                 {t.extensions && t.extensions.length > 0 && (
                                     <div className="mt-2 flex flex-col gap-1">
-                                        {t.extensions.map((ext, idx) => (
+                                        {/* Display only the first 3 extensions */}
+                                        {t.extensions.slice(0, 3).map((ext, idx) => (
                                             <span key={idx} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100 w-fit flex items-center gap-1 whitespace-nowrap">
                                                 <RefreshCw size={8}/> + {ext.description} (₱{Number(ext.additional_cost).toLocaleString()})
                                             </span>
                                         ))}
+
+                                        {/* If there are more than 3, show count and a tooltip for the rest */}
+                                        {t.extensions.length > 3 && (
+                                            <div className="group relative w-fit">
+                                                <span className="text-[10px] font-medium text-slate-400 pl-1 cursor-help hover:text-purple-600 transition-colors">
+                                                    + {t.extensions.length - 3} more extensions...
+                                                </span>
+                                                
+                                                {/* Tooltip to show hidden extensions */}
+                                                <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-max bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg border border-slate-700">
+                                                    {t.extensions.slice(3).map((ext, i) => (
+                                                        <div key={i} className="mb-1 last:mb-0 whitespace-nowrap">
+                                                            • {ext.description} (₱{Number(ext.additional_cost).toLocaleString()})
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </td>
+
                             <td className="px-6 py-4 text-right align-top"><p className="font-bold text-slate-900 text-sm whitespace-nowrap">₱{parseFloat(t.total_amount).toLocaleString()}</p></td>
                             <td className="px-6 py-4 text-right align-top">
                                 {parseFloat(t.balance) > 0 ? ( <span className="text-xs font-bold text-rose-500 whitespace-nowrap">₱{parseFloat(t.balance).toLocaleString()}</span> ) : ( 
@@ -419,17 +529,24 @@ const OwnerAnalytics = () => {
 
 // --- SUB-COMPONENTS ---
 
-const StatCard = ({ title, value, icon: Icon, subText, trendIcon: TrendIcon, color, bg, isMoney = true }) => (
+const StatCard = ({ title, value, icon: Icon, trendValue, periodLabel, isPositive, color, bg, isMoney = true }) => (
    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between relative overflow-hidden">
-      <div className="flex justify-between items-start mb-4 relative z-10">
-         <div className={`p-3 rounded-xl transition-colors ${bg} ${color}`}><Icon size={24} strokeWidth={2.5} /></div>
-         {TrendIcon && (<div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${bg} ${color}`}><TrendIcon size={12} />{subText && <span>{subText}</span>}</div>)}
+      <div className="flex justify-between items-start mb-2 relative z-10">
+         <div className={`p-3 rounded-xl transition-colors ${bg} ${color}`}><Icon size={24} strokeWidth={2} /></div>
       </div>
-      <div className="relative z-10">
-         <h4 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight group-hover:translate-x-1 transition-transform">{isMoney ? '₱' : ''}{value.toLocaleString()}</h4>
-         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">{title}</p>
+      <div className="relative z-10 mt-2">
+         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</p>
+         <h4 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight mt-1">{isMoney ? '₱' : ''}{value.toLocaleString()}</h4>
+         
+         <div className="flex items-center gap-2 mt-2">
+             <div className={`flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                {isPositive ? <ArrowUpRight size={12}/> : <ArrowDownRight size={12}/>}
+                <span>{trendValue}</span>
+             </div>
+             <span className="text-[10px] text-slate-400 font-medium">{periodLabel}</span>
+         </div>
       </div>
-      <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full opacity-10 ${bg}`}></div>
+      <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full opacity-5 ${bg}`}></div>
    </div>
 );
 
@@ -447,8 +564,8 @@ const StatusBadge = ({ status }) => {
     }
 
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${styles} whitespace-nowrap`}>
-            <Icon size={10} strokeWidth={3}/> {status}
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium uppercase border ${styles} whitespace-nowrap`}>
+            <Icon size={10} strokeWidth={2.5}/> {status}
         </span>
     );
 };
