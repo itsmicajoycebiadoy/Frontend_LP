@@ -5,43 +5,9 @@ import {
   PieChart, Pie, Cell, BarChart, Bar 
 } from 'recharts';
 import { 
-  Download, TrendingUp, DollarSign, 
-  Wallet, Users, ArrowUpRight, ArrowDownRight, Filter, BarChart2, CheckCircle, XCircle, Clock, RefreshCw
+  TrendingUp, DollarSign, Wallet, Users, ArrowUpRight, ArrowDownRight, 
+  Filter, BarChart2, CheckCircle, XCircle, Clock, RefreshCw
 } from 'lucide-react';
-
-// --- UTILS FOR CSV EXPORT ---
-const exportToCSV = (transactions, startDate, endDate) => {
-    const headers = [
-        "Transaction Ref", "Check-In Date", "Check-Out Date", "Customer Name", 
-        "Booking Type", "Amenities", "Extensions Details", "Extensions Cost", 
-        "Total Amount", "Balance", "Status"
-    ];
-
-    const rows = transactions.map(t => {
-        const extDetails = t.extensions && t.extensions.length > 0 
-            ? t.extensions.map(e => `${e.description} (${e.duration || 0}hrs)`).join('; ') : "None";   
-        const extCost = t.extensions && t.extensions.length > 0
-            ? t.extensions.reduce((sum, e) => sum + Number(e.additional_cost || 0), 0) : 0;
-        const cleanName = (t.customer_name || "").replace(/"/g, '""');
-        const checkIn = t.check_in_formatted || t.formatted_date || "N/A";
-        const checkOut = t.check_out_formatted || "N/A";
-
-        return [
-            `"${t.transaction_ref}"`, `"${checkIn}"`, `"${checkOut}"`, `"${cleanName}"`,
-            `"${t.booking_type}"`, `"${t.amenities_summary || ''}"`, `"${extDetails}"`,
-            extCost, t.total_amount, t.balance, `"${t.booking_status}"`
-        ].join(",");
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `LP_Report_${startDate}_to_${endDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
 
 const OwnerAnalytics = () => { 
   // State for internal loading (not displayed)
@@ -93,22 +59,21 @@ const OwnerAnalytics = () => {
 
   // --- UPDATED USE EFFECT FOR AUTO REFRESH (3 SECONDS) ---
   useEffect(() => { 
-    // 1. Initial Load (May Loading Spinner para alam ng user na naglo-load)
+    // 1. Initial Load
     fetchDashboardData(false);
 
-    // 2. Set Interval - Uulit kada 3 seconds (Background refresh, walang spinner)
+    // 2. Set Interval - Uulit kada 3 seconds
     const intervalId = setInterval(() => {
         fetchDashboardData(true);
     }, 3000);
 
-    // 3. Cleanup - Patayin ang timer kapag umalis sa page o nagbago ang date
+    // 3. Cleanup
     return () => clearInterval(intervalId);
 
   }, [dateRange]); 
 
   // --- UPDATED FETCH FUNCTION TO HANDLE BACKGROUND LOADING ---
   const fetchDashboardData = async (isBackground = false) => {
-    // Only show spinner if it's NOT a background refresh
     if (!isBackground) setLoading(true);
     
     try {
@@ -124,7 +89,6 @@ const OwnerAnalytics = () => {
     } catch (error) { 
         console.error("Dashboard Load Error:", error); 
     } finally { 
-        // Only hide spinner if it was shown
         if (!isBackground) setLoading(false);
     }
   };
@@ -134,7 +98,6 @@ const OwnerAnalytics = () => {
     let start = new Date();
     const end = new Date(); 
 
-    // UPDATE: Set active filter visually
     setActiveFilter(type);
 
     if (type === 'today') {
@@ -161,10 +124,9 @@ const OwnerAnalytics = () => {
     }
   };
 
-  // Helper to handle manual date changes (resets the active buttons)
   const handleManualDateChange = (key, value) => {
       setDateRange(prev => ({ ...prev, [key]: value }));
-      setActiveFilter('custom'); // Removes highlight from quick buttons
+      setActiveFilter('custom'); 
       setPeriodLabel('vs previous period');
   };
 
@@ -184,7 +146,6 @@ const OwnerAnalytics = () => {
      'Walk-in': transactions.filter(t => t.booking_type === 'Walk-in').length
   }), [transactions]);
 
-  // --- SORTED TABLE LOGIC ---
   const sortedTableData = useMemo(() => {
     const statusPriority = {
       'Pending': 1,
@@ -248,7 +209,7 @@ const OwnerAnalytics = () => {
              </div>
           </div>
 
-          {/* 2. DATE INPUTS & EXPORT */}
+          {/* 2. DATE INPUTS */}
           <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto items-end">
              <div className="w-full sm:w-auto flex flex-col gap-1">
                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
@@ -269,13 +230,6 @@ const OwnerAnalytics = () => {
                    className="w-full sm:w-36 lg:w-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 transition-all cursor-pointer shadow-sm"
                  />
              </div>
-
-             <button 
-                type="button" onClick={() => exportToCSV(transactions, dateRange.startDate, dateRange.endDate)} 
-                className="w-full sm:w-auto h-[38px] px-6 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
-             >
-                <Download size={16}/> <span>Export</span>
-             </button>
           </div>
 
         </div>
@@ -478,21 +432,17 @@ const OwnerAnalytics = () => {
                                 <p className="text-xs text-slate-600 font-medium line-clamp-2 max-w-[200px]" title={t.amenities_summary}>{t.amenities_summary || "No amenities"}</p>
                                 {t.extensions && t.extensions.length > 0 && (
                                     <div className="mt-2 flex flex-col gap-1">
-                                        {/* Display only the first 3 extensions */}
                                         {t.extensions.slice(0, 3).map((ext, idx) => (
                                             <span key={idx} className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100 w-fit flex items-center gap-1 whitespace-nowrap">
                                                 <RefreshCw size={8}/> + {ext.description} (₱{Number(ext.additional_cost).toLocaleString()})
                                             </span>
                                         ))}
 
-                                        {/* If there are more than 3, show count and a tooltip for the rest */}
                                         {t.extensions.length > 3 && (
                                             <div className="group relative w-fit">
                                                 <span className="text-[10px] font-medium text-slate-400 pl-1 cursor-help hover:text-purple-600 transition-colors">
                                                     + {t.extensions.length - 3} more extensions...
                                                 </span>
-                                                
-                                                {/* Tooltip to show hidden extensions */}
                                                 <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-max bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg border border-slate-700">
                                                     {t.extensions.slice(3).map((ext, i) => (
                                                         <div key={i} className="mb-1 last:mb-0 whitespace-nowrap">
