@@ -114,18 +114,25 @@ const WalkInBooking = () => {
             {/* ROW 1: Form (Cust Details Left | Schedule Right) */}
             <WalkInForm formData={formData} setFormData={setFormData} dateError={dateError} />
 
-            {/* ROW 2: Cart (Left) | Amenities (Right) */}
+            {/* ROW 2: Amenities (Left/Top) | Cart (Right/Bottom) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
                 
-                {/* LEFT: Cart (Matches width of Customer Details roughly) */}
+                {/* AMENITIES (Main Section)
+                    - Mobile (grid-cols-1): This appears FIRST because it's first in code.
+                    - Desktop (xl:grid-cols-3): This takes 2 columns on the LEFT.
+                */}
+                <div className="xl:col-span-2">
+                    <WalkInAmenities amenities={amenities} cart={cart} setCart={setCart} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
+                </div>
+
+                {/* CART (Summary Section)
+                    - Mobile (grid-cols-1): This appears SECOND/BELOW because it's second in code.
+                    - Desktop (xl:grid-cols-3): This takes 1 column on the RIGHT.
+                */}
                 <div className="xl:col-span-1">
                     <WalkInCart cart={cart} setCart={setCart} total={calculateTotal()} dateError={dateError} setShowConfirmModal={setShowConfirmModal} formData={formData} />
                 </div>
 
-                {/* RIGHT: Amenities (Matches width of Schedule roughly, spans wider) */}
-                <div className="xl:col-span-2">
-                    <WalkInAmenities amenities={amenities} cart={cart} setCart={setCart} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
-                </div>
             </div>
         </div>
         
