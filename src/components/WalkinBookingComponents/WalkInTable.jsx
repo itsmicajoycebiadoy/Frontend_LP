@@ -4,13 +4,15 @@ import { Search, Info, CheckCircle, Plus, RefreshCw, Clock, LogIn, LogOut, Ban, 
 import WalkInModals from './WalkInModal'; 
 
 const WalkInTable = ({ refreshTrigger }) => { 
+    // Data Loading State
     const [recentWalkIns, setRecentWalkIns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     
-    // Toast state
-    const [toast, setToast] = useState(null);
+    // Action Loading State
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const [toast, setToast] = useState(null);
     const [tableSearch, setTableSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
@@ -22,21 +24,29 @@ const WalkInTable = ({ refreshTrigger }) => {
     const [detailsViewType, setDetailsViewType] = useState('amenities');
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, id: null, guestName: '' });
 
-    // Extend
     const [extendHours, setExtendHours] = useState(1);
     const [newCheckoutDateTime, setNewCheckoutDateTime] = useState('');
     const [additionalAmount, setAdditionalAmount] = useState(0);
 
-    // ✅ FIXED: Pass 'title' (Guest Name)
     const showToast = useCallback((title, message, type = 'success') => {
         setToast({ title, message, type, id: Date.now() }); 
     }, []);
 
-    const closeToast = useCallback(() => {
-        setToast(null);
-    }, []);
+    const closeToast = useCallback(() => { setToast(null); }, []);
 
-    // FETCH (Strict Rules)
+    // --- HELPER: CALCULATE COSTS ---
+    const getCostBreakdown = (transaction) => {
+        const extensions = transaction.extensions || [];
+        const currentTotal = parseFloat(transaction.total_amount || 0);
+        let extensionCost = 0;
+        if (extensions.length > 0) {
+            extensionCost = extensions.reduce((sum, ext) => sum + parseFloat(ext.additional_cost || 0), 0);
+        }
+        const oldTotal = currentTotal - extensionCost;
+        return { currentTotal, oldTotal, hasExtension: extensionCost > 0 };
+    };
+
+    // --- FETCH DATA ---
     const fetchRecentWalkIns = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
         else setIsRefreshing(true);
@@ -63,13 +73,7 @@ const WalkInTable = ({ refreshTrigger }) => {
                 return false;
             });
 
-            walkIns.sort((a, b) => {
-                if (a.booking_status === 'Checked-In' && b.booking_status !== 'Checked-In') return -1;
-                if (b.booking_status === 'Checked-In' && a.booking_status !== 'Checked-In') return 1;
-                if (a.booking_status === 'Confirmed' && b.booking_status !== 'Confirmed') return -1;
-                if (b.booking_status === 'Confirmed' && a.booking_status !== 'Confirmed') return 1;
-                return new Date(b.updated_at) - new Date(a.updated_at);
-            });
+            walkIns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             setRecentWalkIns(walkIns);
         } catch (e) { console.error(e); } 
         finally { setLoading(false); setIsRefreshing(false); }
@@ -83,23 +87,24 @@ const WalkInTable = ({ refreshTrigger }) => {
 
     useEffect(() => { if (refreshTrigger > 0) fetchRecentWalkIns(true); }, [refreshTrigger, fetchRecentWalkIns]);
 
-    // ACTIONS
+    // --- ACTIONS ---
     const initiateAction = (id, action, guestName) => { setConfirmModal({ isOpen: true, action, id, guestName }); };
     
     const executeAction = async () => {
-        const { id, action, guestName } = confirmModal; // Added guestName here
+        const { id, action, guestName } = confirmModal; 
         if (!id || !action) return;
-        const previousState = [...recentWalkIns];
-        setRecentWalkIns(prev => prev.map(t => t.id === id ? { ...t, booking_status: action } : t));
-        setConfirmModal({ isOpen: false, action: null, id: null, guestName: '' }); 
+        
+        setIsSubmitting(true);
         try {
             await api.put(`/api/transactions/${id}/status`, { booking_status: action });
-            // ✅ PASS GUEST NAME AS TITLE
             showToast(guestName, `Status updated to ${action}`, 'success');
+            setRecentWalkIns(prev => prev.map(t => t.id === id ? { ...t, booking_status: action } : t));
+            setConfirmModal({ isOpen: false, action: null, id: null, guestName: '' }); 
             fetchRecentWalkIns(true);
         } catch (e) {
-            setRecentWalkIns(previousState);
             showToast(guestName, "Failed to update status.", 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -117,21 +122,27 @@ const WalkInTable = ({ refreshTrigger }) => {
 
     const handleExtendSubmit = async () => {
         if (!selectedTransaction || !newCheckoutDateTime) return;
+        
+        setIsSubmitting(true);
         try {
             await api.put(`/api/reservations/${selectedTransaction.reservations[0].id}/extend`, {
                 new_check_out_date: newCheckoutDateTime.replace('T', ' ') + ':00',
                 additional_cost: additionalAmount, additional_hours: extendHours, extension_type: 'Hourly'
             });
-            // ✅ PASS GUEST NAME
             showToast(selectedTransaction.customer_name, 'Extended successfully!', 'success');
-            setShowExtendModal(false); setSelectedTransaction(null);
+            setShowExtendModal(false); 
+            setSelectedTransaction(null);
             fetchRecentWalkIns(true);
-        } catch (e) { showToast('Error', 'Failed to extend: ' + e.message, 'error'); }
+        } catch (e) { 
+            showToast('Error', 'Failed to extend: ' + e.message, 'error'); 
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const openDetails = (transaction, type) => { setDetailsData(transaction); setDetailsViewType(type); setShowDetailsModal(true); };
 
-    // HELPERS
+    // --- HELPERS ---
     const formatDateTime = (d) => {
         if (!d) return { date: '-', time: '' };
         const dateObj = new Date(d);
@@ -165,7 +176,6 @@ const WalkInTable = ({ refreshTrigger }) => {
         });
     }, [recentWalkIns, tableSearch, statusFilter]);
 
-    // HIDE ACTIONS IF COMPLETED OR CANCELLED
     const shouldShowActions = !['Completed', 'Cancelled'].includes(statusFilter);
 
     if (loading && recentWalkIns.length === 0) {
@@ -176,8 +186,10 @@ const WalkInTable = ({ refreshTrigger }) => {
         <>
             <WalkInModals 
                 toast={toast} onCloseToast={closeToast}
-                confirmModal={confirmModal} setConfirmModal={setConfirmModal} executeAction={executeAction} isActionLoading={loading || isRefreshing}
-                showExtendModal={showExtendModal} setShowExtendModal={setShowExtendModal} transaction={selectedTransaction} handleExtendSubmit={handleExtendSubmit} extendValue={extendHours} setExtendValue={setExtendHours} additionalAmount={additionalAmount} newCheckoutDateTime={newCheckoutDateTime}
+                confirmModal={confirmModal} setConfirmModal={setConfirmModal} executeAction={executeAction} handleExtendSubmit={handleExtendSubmit}
+                isActionLoading={isSubmitting} loading={isSubmitting}
+                showExtendModal={showExtendModal} setShowExtendModal={setShowExtendModal} transaction={selectedTransaction} 
+                extendValue={extendHours} setExtendValue={setExtendHours} additionalAmount={additionalAmount} newCheckoutDateTime={newCheckoutDateTime}
                 showDetailsModal={showDetailsModal} setShowDetailsModal={setShowDetailsModal} detailsData={detailsData} detailsViewType={detailsViewType}
                 showConfirmModal={false} showSuccess={false} 
             />
@@ -228,10 +240,15 @@ const WalkInTable = ({ refreshTrigger }) => {
                                     const isExtended = extInfo.cost > 0;
                                     const checkIn = formatDateTime(sched?.check_in_date);
                                     const checkOut = formatDateTime(sched?.check_out_date);
+                                    const { currentTotal, oldTotal, hasExtension } = getCostBreakdown(t);
+                                    
                                     return (
                                         <tr key={t.id} className="hover:bg-orange-50/20 transition-colors">
                                             <td className="px-4 py-3 font-mono text-xs font-bold text-gray-600">{t.transaction_ref}</td>
-                                            <td className="px-4 py-3"><div className="font-bold text-gray-800">{t.customer_name}</div><div className="text-xs text-gray-500">{t.contact_number}</div></td>
+                                            <td className="px-4 py-3">
+                                                <div className="font-bold text-gray-800">{t.customer_name}</div>
+                                                <div className="text-xs text-gray-500 mb-1">{t.contact_number}</div>
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="text-gray-700 font-medium text-xs truncate max-w-[150px]" title={getAmenitySummary(t)}>{getAmenitySummary(t)}</div>
                                                 <button onClick={() => openDetails(t, 'amenities')} className="text-xs text-orange-600 hover:text-orange-800 flex items-center gap-1 mt-1 font-semibold"><Info size={12} /> View</button>
@@ -251,10 +268,20 @@ const WalkInTable = ({ refreshTrigger }) => {
                                                     <div className="flex flex-col text-xs"><span className="text-gray-500">{checkOut.date}</span><span className={`font-bold ${isExtended ? 'text-purple-600' : 'text-orange-700'}`}>{checkOut.time}</span></div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 mb-1"><CheckCircle size={10}/> Paid</div>
-                                                    <span className="font-bold text-gray-900 text-sm">₱{parseFloat(t.total_amount).toLocaleString()}</span>
+                                            <td className="px-4 py-3 text-center align-middle">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 mb-1">
+                                                        <CheckCircle size={10}/> Paid
+                                                    </div>
+                                                    
+                                                    {hasExtension ? (
+                                                        <div className="flex flex-col leading-tight">
+                                                            <span className="text-xs text-gray-400 line-through decoration-gray-400">₱{oldTotal.toLocaleString()}</span>
+                                                            <span className="font-bold text-orange-600 text-sm">₱{currentTotal.toLocaleString()}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="font-bold text-gray-900 text-sm">₱{currentTotal.toLocaleString()}</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -265,14 +292,14 @@ const WalkInTable = ({ refreshTrigger }) => {
                                                     <div className="flex justify-center gap-1">
                                                         {t.booking_status === 'Confirmed' && (
                                                             <>
-                                                                <button onClick={() => initiateAction(t.id, 'Checked-In', t.customer_name)} className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700" title="Check In"><LogIn size={14}/></button>
-                                                                <button onClick={() => initiateAction(t.id, 'Cancelled', t.customer_name)} className="p-1.5 bg-gray-100 text-gray-500 rounded hover:bg-red-100 hover:text-red-600" title="Cancel Booking"><Ban size={14}/></button>
+                                                                <button onClick={() => initiateAction(t.id, 'Checked-In', t.customer_name)} disabled={isSubmitting || loading} className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" title="Check In"><LogIn size={14}/></button>
+                                                                <button onClick={() => initiateAction(t.id, 'Cancelled', t.customer_name)} disabled={isSubmitting || loading} className="p-1.5 bg-gray-100 text-gray-500 rounded hover:bg-red-100 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed" title="Cancel Booking"><Ban size={14}/></button>
                                                             </>
                                                         )}
                                                         {t.booking_status === 'Checked-In' && (
                                                             <>
-                                                                <button onClick={() => openExtend(t)} className="p-1.5 bg-purple-600 text-white rounded hover:bg-purple-700" title="Extend"><Clock size={14}/></button>
-                                                                <button onClick={() => initiateAction(t.id, 'Completed', t.customer_name)} className="p-1.5 bg-orange-600 text-white rounded hover:bg-orange-700" title="Check Out"><LogOut size={14}/></button>
+                                                                <button onClick={() => openExtend(t)} disabled={isSubmitting || loading} className="p-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed" title="Extend"><Clock size={14}/></button>
+                                                                <button onClick={() => initiateAction(t.id, 'Completed', t.customer_name)} disabled={isSubmitting || loading} className="p-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed" title="Check Out"><LogOut size={14}/></button>
                                                             </>
                                                         )}
                                                     </div>
