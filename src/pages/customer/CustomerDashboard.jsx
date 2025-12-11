@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../config/axios"; // ✅ Gamit na ang inyong axios config
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../AuthContext";
 
 // Components
-import Header from "../../components/Header"; // Updated Header
+import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 
 // Customer Sections
@@ -17,10 +17,11 @@ import ContactSection from "../../components/customerdashboardcomponents/Contact
 import MapSection from "../../components/customerdashboardcomponents/MapSection";
 import ReviewModal from "../../components/customerdashboardcomponents/ReviewModal";
 
-const API_URL = "http://localhost:5000";
+// Backend URL para sa images (kung kailangan ng child components)
+const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const CustomerDashboard = () => {
-    const { user, logout } = useAuth(); // Kailangan natin ang logout function dito
+    const { user, logout } = useAuth();
 
     // State
     const [reviews, setReviews] = useState([]);
@@ -40,7 +41,8 @@ const CustomerDashboard = () => {
 
                 // Fetch Featured Amenities
                 try {
-                    const response = await axios.get(`${API_URL}/api/amenities/featured`);
+                    // ✅ api.get na lang, wala nang ${API_URL}
+                    const response = await api.get('/api/amenities/featured');
                     if (response.data && response.data.length > 0) {
                         setFeaturedAmenities(response.data);
                     } else { throw new Error("No data"); }
@@ -55,7 +57,8 @@ const CustomerDashboard = () => {
 
                 // Fetch Reviews
                 try {
-                    const reviewsRes = await axios.get(`${API_URL}/api/feedbacks`);
+                    // ✅ api.get na lang
+                    const reviewsRes = await api.get('/api/feedbacks');
                     const formattedReviews = reviewsRes.data.map(review => ({
                         id: review.id,
                         name: review.customer_name || review.name || "Guest",
@@ -83,7 +86,8 @@ const CustomerDashboard = () => {
     const handleReviewSubmit = async (payload) => {
         setIsSubmitting(true);
         try {
-            const response = await axios.post(`${API_URL}/api/feedbacks`, payload);
+            // ✅ api.post na lang
+            const response = await api.post('/api/feedbacks', payload);
             if (response.data.success) {
                 if (payload.rating >= 4) {
                     const newReview = {
@@ -109,10 +113,6 @@ const CustomerDashboard = () => {
     return (
         <div className="min-h-screen flex flex-col font-sans bg-white w-full overflow-x-hidden relative">
             
-            {/* --- UPDATED HEADER USAGE ---
-               Note: Sa Customer, hindi kailangan ng activeTab/setActiveTab 
-               dahil URL/Router ang gamit nila.
-            */}
             <div className="sticky top-0 z-50 bg-white w-full">
                 <Header user={user} onLogout={logout} />
             </div>
@@ -124,9 +124,9 @@ const CustomerDashboard = () => {
                 <FeaturedAmenities 
                     isLoading={isLoadingData} 
                     amenities={featuredAmenities} 
-                    apiUrl={API_URL} 
+                    apiUrl={backendUrl} // ✅ Pass backendUrl for images
                 />
-                <GallerySection apiUrl={API_URL} />
+                <GallerySection apiUrl={backendUrl} />
                 <FeedbackSection 
                     reviews={reviews} 
                     isLoading={isLoadingReviews} 
