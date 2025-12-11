@@ -479,7 +479,7 @@ const OwnerAnalytics = () => {
 
 // --- SUB-COMPONENTS ---
 
-const StatCard = ({ title, value, trendValue, periodLabel, isPositive, color, bg, isMoney = true }) => (
+const StatCard = ({ title, value, trendValue, periodLabel, isPositive, color, bg, icon: Icon, isMoney = true }) => (
    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between relative overflow-hidden">
       <div className="flex justify-between items-start mb-2 relative z-10">
          <div className={`p-3 rounded-xl transition-colors ${bg} ${color}`}><Icon size={24} strokeWidth={2} /></div>
