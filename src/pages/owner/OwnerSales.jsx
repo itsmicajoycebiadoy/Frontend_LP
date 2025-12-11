@@ -11,7 +11,7 @@ import {
 
 const OwnerAnalytics = () => { 
   // State for internal loading (not displayed)
-  const [loading, setLoading] = useState(false);
+  const [ setLoading] = useState(false);
   const [periodLabel, setPeriodLabel] = useState('vs last month');
   
   // NEW: State to track which quick filter is active
@@ -479,7 +479,7 @@ const OwnerAnalytics = () => {
 
 // --- SUB-COMPONENTS ---
 
-const StatCard = ({ title, value, icon: Icon, trendValue, periodLabel, isPositive, color, bg, isMoney = true }) => (
+const StatCard = ({ title, value, trendValue, periodLabel, isPositive, color, bg, isMoney = true }) => (
    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between relative overflow-hidden">
       <div className="flex justify-between items-start mb-2 relative z-10">
          <div className={`p-3 rounded-xl transition-colors ${bg} ${color}`}><Icon size={24} strokeWidth={2} /></div>
