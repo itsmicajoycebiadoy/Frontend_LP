@@ -198,21 +198,25 @@ const Reservations = () => {
 
   const visibleReservations = currentReservations.filter(r => !hiddenHistoryIds.includes(r.id));
 
+  // --------------------------------------------------------------------------
+  // 🔥 FIX PARA HINDI "UMISOD" O GUMALAW ANG LAYOUT
+  // Tinanggal na natin yung padding calculation na nagpapa-move sa body.
+  // Ngayon, simple 'overflow: hidden' na lang para ma-disable ang scroll.
+  // --------------------------------------------------------------------------
   useEffect(() => {
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     if (showCartModal || showReservationsModal || reservationToCancel) {
+      // Disable scroll lang, wag na galawin ang padding
       document.body.style.overflow = 'hidden';
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
     } else {
+      // Ibalik sa dati
       document.body.style.overflow = 'unset';
-      document.body.style.paddingRight = '0';
+      document.body.style.paddingRight = ''; // Siguraduhing walang naiwang padding
     }
 
+    // Cleanup function para sigurado
     return () => {
       document.body.style.overflow = 'unset';
-      document.body.style.paddingRight = '0';
+      document.body.style.paddingRight = '';
     };
   }, [showCartModal, showReservationsModal, reservationToCancel]);
 
