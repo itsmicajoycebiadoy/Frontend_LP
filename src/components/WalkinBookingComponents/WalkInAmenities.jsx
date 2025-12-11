@@ -3,33 +3,34 @@ import { Search, Plus, Users, Package, Image as ImageIcon } from 'lucide-react';
 
 const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, selectedCategory, setSelectedCategory }) => {
     
-    // 1. Get the Backend URL from environment variables
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:7777'; 
 
     const categories = ['All', ...new Set(amenities.map(a => a.type))];
     
-    // 2. Filter First
     const filteredAmenities = amenities.filter(a => 
         (selectedCategory === 'All' || a.type === selectedCategory) && 
         a.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // 3. Sort: Available First, Fully Booked Last
+    // --- LOGIC FIX: Sort using 'slots_left' ---
     const sortedAmenities = [...filteredAmenities].sort((a, b) => {
-        const aAvailable = (a.quantity - (a.booked || 0)) > 0;
-        const bAvailable = (b.quantity - (b.booked || 0)) > 0;
+        // Use slots_left directly if available, else calc
+        const aSlots = a.slots_left !== undefined ? a.slots_left : (a.quantity - (a.booked || 0));
+        const bSlots = b.slots_left !== undefined ? b.slots_left : (b.quantity - (b.booked || 0));
 
-        // If 'a' is available and 'b' is not, 'a' comes first
+        const aAvailable = aSlots > 0;
+        const bAvailable = bSlots > 0;
+
         if (aAvailable && !bAvailable) return -1;
-        // If 'b' is available and 'a' is not, 'b' comes first
         if (!aAvailable && bAvailable) return 1;
-        // Otherwise, keep original order
         return 0;
     });
 
     const addToCart = (amenity) => {
-        const bookedCount = amenity.booked || 0;
-        const available = amenity.quantity - bookedCount;
+        // --- LOGIC FIX: Use 'slots_left' for limit check ---
+        const available = amenity.slots_left !== undefined 
+            ? amenity.slots_left 
+            : (amenity.quantity - (amenity.booked || 0));
         
         if (available <= 0) return alert("This item is fully booked.");
         
@@ -55,9 +56,8 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
     return (
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 h-[420px] flex flex-col">
             
-            {/* --- HEADER SECTION --- */}
+            {/* HEADER SECTION */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                {/* Search Bar */}
                 <div className="relative w-full md:w-64 group">
                     <input 
                         type="text" 
@@ -66,10 +66,8 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                         onChange={e => setSearchTerm(e.target.value)} 
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all text-sm" 
                     />
-                
                 </div>
 
-                {/* Category Filter Chips */}
                 <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar flex-1">
                     {categories.map(cat => (
                         <button 
@@ -88,7 +86,7 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                 </div>
             </div>
             
-            {/* --- GRID CONTENT --- */}
+            {/* GRID CONTENT */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 h-[600px] overflow-y-auto pr-2 custom-scrollbar content-start">
                 {sortedAmenities.length === 0 ? (
                     <div className="col-span-full flex flex-col items-center justify-center h-64 text-gray-400 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50">
@@ -97,11 +95,13 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                     </div>
                 ) : (
                     sortedAmenities.map(amenity => {
-                        const bookedCount = amenity.booked || 0;
-                        const available = amenity.quantity - bookedCount;
+                        // --- LOGIC FIX: Check Availability Display ---
+                        const available = amenity.slots_left !== undefined 
+                            ? amenity.slots_left 
+                            : (amenity.quantity - (amenity.booked || 0));
+                            
                         const isAvailable = available > 0;
 
-                        // Image Logic
                         let imageUrl = null;
                         if (amenity.image) {
                              if (amenity.image.startsWith('http')) {
@@ -119,14 +119,13 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                                     group flex flex-row h-36 rounded-xl border transition-all duration-200 overflow-hidden
                                     ${isAvailable 
                                         ? 'bg-white border-gray-200 hover:border-orange-400 hover:shadow-md cursor-pointer' 
-                                        : 'bg-gray-50 border-gray-100 opacity-75 cursor-not-allowed order-last' // Extra safety for ordering
+                                        : 'bg-gray-50 border-gray-100 opacity-75 cursor-not-allowed order-last'
                                     }
                                 `}
                             >
                                 {/* LEFT SIDE: DETAILS & TEXT */}
                                 <div className="flex-1 p-3 flex flex-col justify-between">
                                     <div>
-                                        {/* Type Badge */}
                                         <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md mb-1.5">
                                             {amenity.type}
                                         </span>
@@ -135,14 +134,12 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                                             {amenity.name}
                                         </h4>
                                         
-                                        {/* Capacity Info */}
                                         <div className="flex items-center gap-1 text-gray-500 text-xs font-medium">
                                             <Users size={14} />
                                             <span>{amenity.capacity || 1} Pax</span>
                                         </div>
                                     </div>
 
-                                    {/* Footer: Price & Action */}
                                     <div className="flex justify-between items-center pt-2 mt-1">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] text-gray-400 font-medium uppercase">Price</span>
@@ -176,7 +173,6 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                                         <img 
                                             src={imageUrl} 
                                             alt={amenity.name} 
-                                            // ✅ REMOVED: hover:scale-105 from here
                                             className={`w-full h-full object-cover ${!isAvailable && 'grayscale'}`}
                                             onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/300?text=No+Image"; }} 
                                         />
@@ -186,7 +182,7 @@ const WalkInAmenities = ({ amenities, cart, setCart, searchTerm, setSearchTerm, 
                                         </div>
                                     )}
 
-                                    {/* STATUS OVERLAY (On Image) */}
+                                    {/* STATUS OVERLAY */}
                                     <div className="absolute top-2 right-2">
                                         {isAvailable ? (
                                             <span className="text-[9px] font-bold text-green-700 bg-green-100/90 backdrop-blur-sm px-2 py-0.5 rounded-full border border-green-200 shadow-sm">
