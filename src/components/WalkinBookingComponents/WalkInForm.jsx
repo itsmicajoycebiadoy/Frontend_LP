@@ -64,7 +64,8 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
             
             {/* LEFT: Customer Details Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6 border-b pb-4">
+                {/* Tinanggal ko ang 'border-b' at 'pb-4' dito */}
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
                     <User className="w-5 h-5 text-orange-500"/> 
                     Customer Details
                 </h3>
@@ -98,7 +99,8 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
 
             {/* RIGHT: Schedule Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6 border-b pb-4">
+                {/* Tinanggal ko rin ang 'border-b' at 'pb-4' dito */}
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
                     <Calendar className="w-5 h-5 text-orange-500"/> 
                     Schedule
                 </h3>
