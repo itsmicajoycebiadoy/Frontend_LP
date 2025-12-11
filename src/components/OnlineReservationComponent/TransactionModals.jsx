@@ -1,9 +1,8 @@
 import { useState } from 'react';
-// ✅ FIXED: Added 'Calendar' to imports
 import { 
   X, CheckCircle, AlertCircle, RefreshCw, User, 
   FileText, ZoomIn, ZoomOut, Clock, Layers, RotateCcw, Maximize,
-  Plus, CreditCard, LogIn, Ban, LogOut, Eye, HelpCircle, ChevronRight, Users, Calendar
+  Plus, CreditCard, LogIn, Ban, LogOut, Eye, HelpCircle, ChevronRight, Users, Calendar, Minus
 } from 'lucide-react';
 
 const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:7777';
@@ -17,7 +16,7 @@ const getImageUrl = (imagePath) => {
 // ==========================================
 // 1. MOBILE TRANSACTION MODAL
 // ==========================================
-export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewProof, onViewDetails, onStatusUpdate, onExtendBooking }) => {
+export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewProof, onViewDetails, onStatusUpdate, onExtendBooking, loading }) => {
   if (!isOpen || !transaction) return null;
 
   const formatDateTime = (dateStr) => {
@@ -54,7 +53,6 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
   const isExtended = extInfo.cost > 0;
   const isFullyPaid = ['Checked-In', 'Completed'].includes(transaction.booking_status) || transaction.payment_status === 'Fully Paid';
   const paymentLabel = isFullyPaid ? 'Fully Paid' : 'Partial';
-  const downpayment = parseFloat(transaction.downpayment || 0);
   const amenities = getAmenitySummary(transaction);
 
   return (
@@ -63,20 +61,18 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
       <div className="relative min-h-screen flex items-start justify-center p-4 pt-20">
         <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-slideIn">
           
-          {/* Header */}
           <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-6 py-4 border-b border-white/10 rounded-t-2xl flex items-center justify-between text-white z-10">
             <div>
               <h3 className="text-lg font-bold flex items-center gap-2"><FileText size={20}/> Reservation Details</h3>
               <p className="text-xs text-orange-100 font-mono mt-0.5">{transaction.transaction_ref}</p>
             </div>
-            <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white">
+            {/* DISABLED CLOSE BUTTON IF LOADING */}
+            <button onClick={onClose} disabled={loading} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white disabled:opacity-50">
               <X size={20} />
             </button>
           </div>
 
-          {/* Content */}
           <div className="px-6 py-6 space-y-5 bg-gray-50/50">
-            
             {/* Customer Info */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-start gap-3">
@@ -92,7 +88,7 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
               </div>
             </div>
 
-            {/* Date & Time */}
+            {/* Schedule */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                 <Calendar size={16} className="text-gray-500" />
@@ -119,10 +115,7 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide flex items-center gap-2"><Layers size={14}/> Amenities</h4>
-                <button 
-                  onClick={() => onViewDetails(transaction, 'amenities')}
-                  className="text-orange-600 text-xs font-bold hover:text-orange-800 flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-full transition-colors"
-                >
+                <button onClick={() => onViewDetails(transaction, 'amenities')} className="text-orange-600 text-xs font-bold hover:text-orange-800 flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-full transition-colors">
                   View <ChevronRight size={12} />
                 </button>
               </div>
@@ -137,10 +130,7 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
                     <div className="bg-white p-1 rounded text-purple-600"><Plus size={14} /></div>
                     <h4 className="font-bold text-purple-800 text-sm uppercase tracking-wide">Extensions</h4>
                   </div>
-                  <button 
-                    onClick={() => onViewDetails(transaction, 'extensions')}
-                    className="text-purple-700 text-xs font-bold hover:text-purple-900 flex items-center gap-1 bg-white/50 px-2 py-1 rounded-full transition-colors"
-                  >
+                  <button onClick={() => onViewDetails(transaction, 'extensions')} className="text-purple-700 text-xs font-bold hover:text-purple-900 flex items-center gap-1 bg-white/50 px-2 py-1 rounded-full transition-colors">
                     Details <ChevronRight size={12} />
                   </button>
                 </div>
@@ -169,16 +159,10 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
                     ₱{parseFloat(transaction.total_amount).toLocaleString()}
                   </span>
                 </div>
-                {!isFullyPaid && downpayment > 0 && (
-                  <div className="pt-1 flex justify-between text-xs text-gray-500">
-                    <span>Downpayment Paid</span>
-                    <span className="font-medium">₱{downpayment.toLocaleString()}</span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Status & Proof */}
+            {/* Status */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-1">Booking Status</p>
@@ -193,10 +177,7 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
                   </span>
                 </div>
                 {transaction.proof_of_payment && (
-                  <button 
-                    onClick={() => onViewProof(transaction)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border border-orange-200 rounded-lg hover:shadow-md transition-all active:scale-95"
-                  >
+                  <button onClick={() => onViewProof(transaction)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border border-orange-200 rounded-lg hover:shadow-md transition-all active:scale-95">
                     <Eye size={16} />
                     <span className="text-xs font-bold uppercase tracking-wide">See Proof</span>
                   </button>
@@ -204,54 +185,33 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
             </div>
           </div>
 
-          {/* Actions Footer */}
+          {/* ACTION BUTTONS (MOBILE) - ✅ ADDED DISABLED STATES */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 pb-6 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex flex-wrap gap-3">
               {transaction.booking_status === 'Pending' && !transaction.proof_of_payment ? (
-                <button 
-                  onClick={() => onViewDetails(transaction, 'amenities')}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-95 text-center shadow-orange-200"
-                >
+                <button onClick={() => onViewDetails(transaction, 'amenities')} disabled={loading} className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-95 text-center shadow-orange-200 disabled:opacity-50">
                   Review Reservation
                 </button>
               ) : transaction.booking_status === 'Confirmed' ? (
                 <>
-                  <button 
-                    onClick={() => onStatusUpdate(transaction.id, 'Checked-In')}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-orange-200"
-                  >
-                    <LogIn size={18} />
-                    Check In
+                  <button onClick={() => onStatusUpdate(transaction.id, 'Checked-In')} disabled={loading} className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-orange-200 disabled:opacity-50">
+                    <LogIn size={18} /> Check In
                   </button>
-                  <button 
-                    onClick={() => onStatusUpdate(transaction.id, 'Cancelled')}
-                    className="px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all flex items-center justify-center gap-2"
-                  >
+                  <button onClick={() => onStatusUpdate(transaction.id, 'Cancelled')} disabled={loading} className="px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                     <Ban size={18} />
                   </button>
                 </>
               ) : transaction.booking_status === 'Checked-In' ? (
                 <>
-                  <button 
-                    onClick={() => onExtendBooking(transaction)}
-                    className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 hover:shadow-lg shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <Clock size={18} />
-                    Extend
+                  <button onClick={() => onExtendBooking(transaction)} disabled={loading} className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 hover:shadow-lg shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
+                    <Clock size={18} /> Extend
                   </button>
-                  <button 
-                    onClick={() => onStatusUpdate(transaction.id, 'Completed')}
-                    className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 hover:shadow-lg shadow-orange-200 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <LogOut size={18} />
-                    Check Out
+                  <button onClick={() => onStatusUpdate(transaction.id, 'Completed')} disabled={loading} className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 hover:shadow-lg shadow-orange-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
+                    <LogOut size={18} /> Check Out
                   </button>
                 </>
               ) : (
-                <button 
-                  onClick={onClose}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 border border-gray-300 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-                >
+                <button onClick={onClose} disabled={loading} className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 border border-gray-300 rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-50">
                   Close
                 </button>
               )}
@@ -300,16 +260,16 @@ export const ActionModal = ({ isOpen, type, transaction, onClose, onConfirm, loa
   }
 
   return (
-    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all scale-100">
+    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all scale-100 border border-gray-100">
         <div className={`mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center ${iconBg}`}>
             <Icon size={32}/>
         </div>
         <h3 className="text-xl font-bold text-gray-900 text-center mb-2">{title}</h3>
         <p className="text-gray-500 text-center text-sm mb-6">{message}</p>
         <div className="flex gap-3">
-          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className={`flex-1 py-3 text-white rounded-xl font-semibold shadow-lg ${colorClass}`}>
+          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+          <button onClick={onConfirm} disabled={loading} className={`flex-1 py-3 text-white rounded-xl font-semibold shadow-lg ${colorClass} disabled:opacity-50 disabled:cursor-not-allowed`}>
             {loading ? 'Processing...' : 'Confirm'}
           </button>
         </div>
@@ -382,14 +342,14 @@ export const ProofModal = ({ isOpen, transaction, onClose, imageErrors, onRetryL
                 <button 
                     onClick={() => { onClose(); onAction('Cancelled', transaction); }} 
                     disabled={loading} 
-                    className="flex-1 md:flex-none px-6 py-2.5 rounded-lg bg-red-600/20 text-red-400 border border-red-600/50 hover:bg-red-600 hover:text-white font-semibold transition-all"
+                    className="flex-1 md:flex-none px-6 py-2.5 rounded-lg bg-red-600/20 text-red-400 border border-red-600/50 hover:bg-red-600 hover:text-white font-semibold transition-all disabled:opacity-50"
                 >
                     Reject
                 </button>
                 <button 
                     onClick={() => { onClose(); onAction('Confirmed', transaction); }} 
                     disabled={loading} 
-                    className="flex-1 md:flex-none px-6 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-500 font-semibold shadow-lg shadow-green-900/50 transition-all"
+                    className="flex-1 md:flex-none px-6 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-500 font-semibold shadow-lg shadow-green-900/50 transition-all disabled:opacity-50"
                 >
                     Approve Payment
                 </button>
@@ -409,7 +369,7 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
   
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full">
+      <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-100">
         <h3 className="text-2xl font-bold text-gray-900 mb-6">Check-In Confirmation</h3>
         
         <div className="bg-orange-50 border border-orange-100 p-5 rounded-xl mb-6">
@@ -434,8 +394,8 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
         </div>
 
         <div className="flex gap-3">
-          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-colors">
+          <button onClick={onClose} disabled={loading} className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+          <button onClick={onConfirm} disabled={loading} className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
             {loading ? 'Processing...' : 'Confirm Check-In'}
           </button>
         </div>
@@ -445,7 +405,7 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
 };
 
 // ==========================================
-// 5. DETAIL MODAL (AMENITIES OR EXTENSIONS)
+// 5. DETAIL MODAL (NEW DESIGN)
 // ==========================================
 export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   if (!isOpen || !transaction) return null;
@@ -457,89 +417,84 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   const totalAmount = parseFloat(transaction.total_amount || 0);
   const baseTotal = totalAmount - extensionTotal;
 
-  // --- LOGIC: Calculate Entrance Fee (Guest Count * 50) ---
   const guestCount = parseInt(transaction.num_guest) || 0;
   const entranceFee = guestCount * 50;
-
   const isAmenityView = viewType === 'amenities';
 
   return (
-    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
-        <div className={`p-5 border-b flex justify-between items-center ${isAmenityView ? 'bg-gray-50' : 'bg-purple-50'}`}>
-          <h3 className={`font-bold text-lg flex items-center gap-2 ${isAmenityView ? 'text-gray-800' : 'text-purple-800'}`}>
-            {isAmenityView ? <Layers size={20} className="text-orange-600"/> : <Clock size={20} className="text-purple-600"/>}
-            {isAmenityView ? 'Amenity Details' : 'Extension Breakdown'}
+        
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">
+          <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
+            {isAmenityView ? <Layers className="text-orange-500" size={24}/> : <Clock className="text-purple-500" size={24}/>}
+            {isAmenityView ? 'Amenity Details' : 'Extension History'}
           </h3>
-          <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full"><X size={20}/></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{transaction.customer_name}</p>
-            <p className="text-xs text-gray-400 font-mono uppercase">Ref: {transaction.transaction_ref}</p>
+        <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">{transaction.customer_name}</h2>
+            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold mt-1">REF: {transaction.transaction_ref}</p>
             
-            {/* GUEST COUNT DISPLAY */}
             {transaction.num_guest && (
-               <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 font-medium bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 inline-flex">
+               <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-sm font-medium text-gray-600">
                   <Users size={16} className="text-orange-500" />
                   <span>{transaction.num_guest} Guests</span>
                </div>
             )}
           </div>
 
-          {isAmenityView && (
-            <div className="space-y-4">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Booked Items</p>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
-                {/* 1. Amenities List */}
-                {reservations.map((res, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span className="font-medium text-gray-700">{res.quantity}x {res.amenity_name}</span>
-                    <span className="font-bold text-gray-900">₱{(parseFloat(res.price) * parseInt(res.quantity)).toLocaleString()}</span>
-                  </div>
-                ))}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
+            {isAmenityView ? 'Booked Items' : 'Extensions'}
+          </p>
 
-                {/* 2. ENTRANCE FEE ROW (No border-t or dashed lines as requested) */}
-                {guestCount > 0 && (
-                  <div className="flex justify-between text-sm pt-2 mt-2">
-                    <div className="flex items-center gap-2">
-                       <span className="bg-blue-50 text-blue-600 w-5 h-5 flex items-center justify-center rounded text-xs font-bold">{guestCount}</span>
-                       <span className="font-medium text-gray-700">Entrance Fee (₱50)</span>
-                    </div>
-                    <span className="font-bold text-gray-900">₱{entranceFee.toLocaleString()}</span>
-                  </div>
-                )}
-
-                {/* 3. Base Amount (HIGHLIGHTED ORANGE BOX, BOTTOM RIGHT) */}
-                {/* Updated to use bg-orange-50 and standard padding/margins for box effect */}
-                <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100 mt-4">
-                  <span className="text-orange-900 font-bold">Base Amount</span>
-                  <span className="font-extrabold text-xl text-orange-600">₱{baseTotal.toLocaleString()}</span>
+          {isAmenityView ? (
+            <div className="space-y-1">
+              {reservations.map((res, idx) => (
+                <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 px-2 rounded-lg transition-colors">
+                  <span className="font-medium text-slate-700 text-sm">{res.quantity}x {res.amenity_name}</span>
+                  <span className="font-bold text-slate-900 text-sm">₱{(parseFloat(res.price) * parseInt(res.quantity)).toLocaleString()}</span>
                 </div>
-              </div>
-            </div>
-          )}
+              ))}
 
-          {!isAmenityView && (
-            <div className="space-y-4">
-              <p className="text-xs font-bold text-purple-600 uppercase tracking-wider">Extension History</p>
-              {extensions.length === 0 ? (
-                <div className="text-center p-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400 text-sm">No extensions recorded.</div>
-              ) : (
-                <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 space-y-4">
-                  {extensions.map((ext, idx) => (
-                    <div key={idx} className="flex justify-between items-start text-sm pb-3 border-b border-purple-200 last:border-0 last:pb-0">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-purple-900">{ext.description || `Extension #${idx+1}`}</span>
-                        <span className="text-[10px] text-purple-500 uppercase mt-0.5">{new Date(ext.created_at || new Date()).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                      </div>
-                      <span className="font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200">+₱{parseFloat(ext.additional_cost).toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="pt-2 flex justify-between items-center text-sm"><span className="font-bold text-purple-800">Total Fees</span><span className="font-bold text-xl text-purple-700">₱{extensionTotal.toLocaleString()}</span></div>
+              {guestCount > 0 && (
+                <div className="flex justify-between items-center py-3 px-2 rounded-lg hover:bg-gray-50/50">
+                  <div className="flex items-center gap-2">
+                     <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold">{guestCount}</span>
+                     <span className="font-medium text-slate-700 text-sm">Entrance Fee (₱50)</span>
+                  </div>
+                  <span className="font-bold text-slate-900 text-sm">₱{entranceFee.toLocaleString()}</span>
                 </div>
               )}
+
+              <div className="mt-8 flex justify-between items-end border-t border-gray-100 pt-6">
+                  <span className="text-slate-900 font-bold text-lg">Base Amount</span>
+                  <span className="text-3xl font-bold text-orange-500">₱{baseTotal.toLocaleString()}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+               {extensions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 italic bg-gray-50 rounded-xl">No extensions recorded.</div>
+               ) : (
+                  <div className="space-y-2">
+                      {extensions.map((ext, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-50 px-2">
+                            <div>
+                                <span className="block font-bold text-slate-700 text-sm">{ext.description || `Extension #${idx+1}`}</span>
+                                <span className="text-[10px] text-gray-400 uppercase">{new Date(ext.created_at).toLocaleString()}</span>
+                            </div>
+                            <span className="font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded text-sm">+₱{parseFloat(ext.additional_cost).toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="mt-6 flex justify-between items-end border-t border-gray-100 pt-4">
+                          <span className="text-slate-900 font-bold">Total Extension Fees</span>
+                          <span className="text-2xl font-bold text-purple-600">₱{extensionTotal.toLocaleString()}</span>
+                      </div>
+                  </div>
+               )}
             </div>
           )}
         </div>
@@ -549,7 +504,7 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
 };
 
 // ==========================================
-// 6. EXTEND MODAL
+// 6. EXTEND MODAL (NEW DESIGN)
 // ==========================================
 export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading }) => {
   const [extendHours, setExtendHours] = useState(1);
@@ -557,19 +512,20 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
   if (!isOpen || !transaction) return null;
 
   // CALCULATIONS
-  const oldTotalAmount = parseFloat(transaction.total_amount || 0); // Current Total
+  const oldTotalAmount = parseFloat(transaction.total_amount || 0); 
   const hourlyRate = oldTotalAmount / 22; 
   const rawAmount = hourlyRate * extendHours;
   const additionalAmount = Math.ceil(rawAmount / 10) * 10;
-  const newTotalAmount = oldTotalAmount + additionalAmount; // NEW Grand Total
-
+  
   const currentOut = transaction.reservations?.[0]?.check_out_date 
     ? new Date(transaction.reservations[0].check_out_date) 
     : new Date();
   
   const newOutDateObj = new Date(currentOut);
   newOutDateObj.setHours(newOutDateObj.getHours() + extendHours);
-  const newCheckoutDate = newOutDateObj.toISOString();
+  
+  const formatTime = (date) => date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const formatDate = (date) => date.toLocaleString('en-US', { month: 'short', day: 'numeric' });
 
   const handleValueChange = (e) => {
     const val = parseInt(e.target.value);
@@ -577,8 +533,19 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
   };
 
   const handleSubmit = () => {
+    // FIX: Use MANUAL Formatting to avoid UTC conversion shifts
+    const year = newOutDateObj.getFullYear();
+    const month = String(newOutDateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(newOutDateObj.getDate()).padStart(2, '0');
+    const hours = String(newOutDateObj.getHours()).padStart(2, '0');
+    const minutes = String(newOutDateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(newOutDateObj.getSeconds()).padStart(2, '0');
+    
+    // Format: YYYY-MM-DD HH:mm:ss (Local Time)
+    const formattedLocal = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
     onExtend({
-      newCheckoutDate,
+      newCheckoutDate: formattedLocal, // Send this LOCAL time string
       additionalAmount,
       extensionType: 'Hourly',
       extensionValue: extendHours,
@@ -587,53 +554,73 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
   };
 
   return (
-    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-6 text-white flex justify-between items-center">
-          <div><h3 className="text-xl font-bold flex items-center gap-2"><Clock size={24} /> Extend Stay</h3><p className="text-orange-100 text-sm mt-1">{transaction.customer_name}</p></div>
-          <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition"><X size={20} /></button>
+    <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-[400px] overflow-hidden flex flex-col">
+        
+        <div className="bg-[#F97316] px-6 py-5 flex justify-between items-start text-white">
+          <div>
+             <h3 className="text-xl font-bold flex items-center gap-2"><Clock className="opacity-90" size={22} /> Extend Stay</h3>
+             <p className="text-orange-100 text-sm mt-1 opacity-90">{transaction.customer_name}</p>
+          </div>
+          <button onClick={onClose} disabled={loading} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors">
+             <X size={20} />
+          </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6">
-          <div className="flex items-center justify-between border-2 border-gray-100 rounded-2xl p-4 bg-gray-50/50">
-            <div className="flex flex-col"><span className="text-gray-700 font-bold text-base">Add Hours</span><span className="text-[10px] text-gray-500 uppercase tracking-wide">Late Checkout</span></div>
-            <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-200">
-              <button onClick={() => setExtendHours(Math.max(1, extendHours - 1))} className="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center font-bold text-lg text-gray-600 transition-colors">-</button>
-              <input type="number" min="1" value={extendHours} onChange={handleValueChange} className="w-14 h-10 text-center text-2xl font-bold text-orange-600 bg-transparent outline-none"/>
-              <button onClick={() => setExtendHours(extendHours + 1)} className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 flex items-center justify-center font-bold text-lg transition-colors">+</button>
-            </div>
+        <div className="p-6 bg-[#F8FAFC]"> 
+          
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-4">
+             <div className="flex items-center justify-between">
+                <div>
+                    <label className="block text-slate-800 font-bold text-base">Add Hours</label>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Late Checkout</span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                    <button onClick={() => setExtendHours(Math.max(1, extendHours - 1))} disabled={loading} className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border border-gray-200">
+                        <Minus size={18} strokeWidth={3} />
+                    </button>
+                    
+                    <div className="w-16 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg mx-1">
+                        <input type="number" min="1" value={extendHours} onChange={handleValueChange} disabled={loading} className="w-full text-center text-xl font-bold text-slate-800 outline-none bg-transparent"/>
+                    </div>
+
+                    <button onClick={() => setExtendHours(extendHours + 1)} disabled={loading} className="w-10 h-10 flex items-center justify-center rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600 transition-colors border border-orange-100">
+                        <Plus size={18} strokeWidth={3} />
+                    </button>
+                </div>
+             </div>
           </div>
 
-          <div className="bg-orange-50/50 p-5 rounded-2xl border border-orange-100 space-y-3">
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Current Check-out</span><span className="font-medium text-gray-800">{transaction.reservations?.[0]?.check_out_date ? new Date(transaction.reservations[0].check_out_date).toLocaleString('en-US', { hour: 'numeric', minute:'2-digit', month: 'short', day: 'numeric'}) : ''}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-blue-600 font-bold">New Check-out</span><span className="font-bold text-blue-600">{new Date(newCheckoutDate).toLocaleString('en-US', { hour: 'numeric', minute:'2-digit', month: 'short', day: 'numeric'})}</span></div>
-            
-            <div className="border-t border-blue-200 pt-3 mt-2 space-y-2">
-                {/* OLD Payment with Strikethrough */}
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>Previous Total</span>
-                    <span className="line-through decoration-red-500 decoration-2">₱{oldTotalAmount.toLocaleString()}</span>
-                </div>
-
-                {/* Additional Fee */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+             <div className="space-y-2 pb-4 border-b border-dashed border-gray-100">
                 <div className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-700">Extension Fee</span>
-                    <span className="font-bold text-green-600">+₱{additionalAmount.toLocaleString()}</span>
+                    <span className="text-gray-400 font-medium">Current Check-out</span>
+                    <span className="text-slate-700 font-bold">{formatDate(currentOut)}, {formatTime(currentOut)}</span>
                 </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-orange-500 font-bold">New Check-out</span>
+                    <span className="text-orange-600 font-bold">{formatDate(newOutDateObj)}, {formatTime(newOutDateObj)}</span>
+                </div>
+             </div>
 
-                {/* New GRAND TOTAL */}
-                <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-orange-200 mt-2">
-                    <span className="font-bold text-orange-800">New Total Amount</span>
-                    <span className="text-2xl font-extrabold text-orange-600">₱{newTotalAmount.toLocaleString()}</span>
-                </div>
-            </div>
+             <div className="flex justify-between items-center">
+                <span className="text-slate-800 font-bold text-lg">Additional Fee</span>
+                <span className="text-3xl font-extrabold text-green-500">₱{additionalAmount}</span>
+             </div>
           </div>
+
         </div>
 
-        <div className="p-4 border-t bg-gray-50 flex gap-3">
-          <button onClick={onClose} disabled={loading} className="flex-1 py-3 font-bold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-100">Cancel</button>
-          <button onClick={handleSubmit} disabled={loading || additionalAmount <= 0} className="flex-1 py-3 font-bold text-white bg-gradient-to-r from-orange-600 to-amber-600 rounded-xl hover:shadow-lg disabled:opacity-50 transition-all">{loading ? 'Processing...' : `Pay & Extend`}</button>
+        <div className="p-6 bg-white border-t border-gray-50 flex gap-3">
+          <button onClick={onClose} disabled={loading} className="flex-1 py-3.5 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors text-sm">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={loading || additionalAmount <= 0} className="flex-1 py-3.5 bg-[#F97316] text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none text-sm">
+            {loading ? 'Processing...' : `Confirm (+₱${additionalAmount})`}
+          </button>
         </div>
+
       </div>
     </div>
   );
