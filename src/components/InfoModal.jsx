@@ -44,8 +44,8 @@ const InfoModal = ({ isOpen, onClose, type }) => {
         A: While walk-ins are welcome, we highly recommend making reservations to guarantee your spot.
         
         **Q: What payment methods do you accept?**
-        A: We accept cash and also GCash, 
-    
+        A: We accept GCash for online payments. Customers can pay via any payment method using Instapay QR (e.g., Maya, as tested previously). We only require proof of payment, and all transactions will be reflected in our single app/account.
+        
         **Q: Is there parking available?**
         A: Yes, we provide parking space for our guests.
         
@@ -57,9 +57,9 @@ const InfoModal = ({ isOpen, onClose, type }) => {
       title: "Resort Policies",
       content: `
         **Reservation Policy:**
-        • Reservations must be made at least 24 hours in advance
+        • Reservations must be made at least 6-12 hours in advance.
         • A 20% reservation fee from the total availed service/s are required to prevent "no-shows" and last minute cancellations
-        • Cancellations must be made 48 hours before scheduled date. There is no refund policy, it will cover the preparation costs.
+        • Cancellations can be made anytime via the provided button. However, if payment has already been made, there is no refund policy, as it covers preparation costs. Please ensure you are sure before booking.
         
         **Safety Rules:**
         • Children must be supervised at all times

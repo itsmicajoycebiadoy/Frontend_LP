@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { MapPin, Grid } from "lucide-react";
-import herovideo from "../../../assets/videoplayback.mp4";
+import herovideo from "../../assets/videoplayback.mp4";
 
 const HeroSection = () => {
     const navigate = useNavigate();

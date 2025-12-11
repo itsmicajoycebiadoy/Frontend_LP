@@ -5,6 +5,7 @@ import Footer from "../../components/Footer";
 import { useAuth } from "../AuthContext";
 import api from "../../config/axios"; 
 import { useNavigate } from "react-router-dom";
+import { Check, ShoppingCart, X, ArrowRight } from "lucide-react"; // Import Icons
 
 const Amenities = () => {
   const [amenities, setAmenities] = useState([]);
@@ -12,6 +13,10 @@ const Amenities = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Notification State
+  const [showNotification, setShowNotification] = useState(false);
+  const [addedItem, setAddedItem] = useState(null);
+
   const [filters, setFilters] = useState({
     type: 'any',
     availability: 'any',
@@ -19,32 +24,32 @@ const Amenities = () => {
     priceRange: 'any'
   });
 
-  const [bookingInProgress, setBookingInProgress] = useState(false);
-  const lastNavigatedRef = useRef(null);
-
-  const { user, logout } = useAuth();
+  const { user } = useAuth(); 
   const navigate = useNavigate();
   
   const backgroundImageUrl = "/images/bg.jpg";
   
-  // LOGOUT HANDLERS
-  const handleLogoutClick = () => {
-    logout(); 
-    navigate('/'); 
-  };
-
   const fetchAmenities = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await api.get('/api/amenities');
-      const backendUrl = import.meta.env.VITE_API_URL || ""; 
+      const backendUrl = import.meta.env.VITE_API_URL; 
       
       const dataWithImages = response.data.map(item => {
-        const filename = item.image && item.image.toString().trim();
+        let imageUrl = null;
+        
+        if (item.image) {
+             if (item.image.startsWith('http')) {
+                 imageUrl = item.image;
+             } else {
+                 imageUrl = `${backendUrl}/uploads/am_images/${item.image}`;
+             }
+        }
+
         return {
-          ...item,
-          image: filename ? `${backendUrl}/uploads/am_images/${filename}` : "/images/default-amenity.jpg"
+           ...item,
+           image: imageUrl
         };
       });
 
@@ -69,17 +74,31 @@ const Amenities = () => {
   const applyFilters = () => {
     let filtered = [...amenities];
     
+    // 1. FILTER TYPE
     if (filters.type !== 'any') {
       filtered = filtered.filter(amenity => 
         amenity.type?.toLowerCase() === filters.type.toLowerCase()
       );
     }
     
+    // 2. FILTER AVAILABILITY
     if (filters.availability !== 'any') {
-      if (filters.availability === 'available') filtered = filtered.filter(amenity => amenity.available === 'Yes');
-      else if (filters.availability === 'unavailable') filtered = filtered.filter(amenity => amenity.available === 'No');
+      if (filters.availability === 'available') {
+        filtered = filtered.filter(amenity => 
+            amenity.available === 'Yes' || 
+            amenity.available === 'yes' || 
+            amenity.available === true
+        );
+      } else if (filters.availability === 'unavailable') {
+        filtered = filtered.filter(amenity => 
+            amenity.available === 'No' || 
+            amenity.available === 'no' || 
+            amenity.available === false
+        );
+      }
     }
     
+    // 3. FILTER CAPACITY
     if (filters.capacity !== 'any') {
       switch (filters.capacity) {
         case '1-4': 
@@ -95,6 +114,7 @@ const Amenities = () => {
       }
     }
     
+    // 4. FILTER PRICE
     if (filters.priceRange !== 'any') {
       switch (filters.priceRange) {
         case '0-500': 
@@ -121,51 +141,147 @@ const Amenities = () => {
     setFilters({ type: 'any', availability: 'any', capacity: 'any', priceRange: 'any' });
   };
 
+  // ✅ MODIFIED: Handle Book (Add to Cart logic inside Amenities)
   const handleBookAmenity = (amenity) => {
     if (!amenity) return;
 
-    if (bookingInProgress) return;
+    // 1. Determine Storage Key (Same logic as Reservations.js)
+    const userId = user?.id || user?._id || user?.userId;
+    const storageKey = userId ? `cart_${userId}` : "cart_guest";
 
-    if (lastNavigatedRef.current && lastNavigatedRef.current === amenity.id) return;
+    // 2. Get Current Cart
+    let currentCart = [];
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) currentCart = JSON.parse(stored);
+    } catch (e) {
+      console.error("Error parsing cart", e);
+    }
 
-    setBookingInProgress(true);
-    lastNavigatedRef.current = amenity.id;
+    // 3. Check for Duplicates
+    const exists = currentCart.find((item) => item.amenity_id === amenity.id);
+    if (exists) {
+      alert(`${amenity.name} is already in your cart. You can increase quantity in the cart.`);
+      return;
+    }
 
-    navigate('/reservations', { state: { selectedAmenity: amenity } });
+    if (currentCart.length >= 10) {
+      alert("You can only add up to 10 different amenities in the cart.");
+      return;
+    }
 
+    // 4. Create New Cart Item (Format must match Reservations.js)
+    const newItem = {
+      id: Date.now(),
+      amenity_id: amenity.id,
+      amenity_name: amenity.name,
+      amenity_type: amenity.type,
+      amenity_price: amenity.price,
+      capacity: amenity.capacity,
+      description: amenity.description,
+      image: amenity.image,
+      quantity: 1,
+    };
+
+    // 5. Save back to LocalStorage
+    const updatedCart = [...currentCart, newItem];
+    localStorage.setItem(storageKey, JSON.stringify(updatedCart));
+
+    // 6. Show Notification instead of redirecting
+    setAddedItem(amenity);
+    setShowNotification(true);
+
+    // Auto-hide notification after 5 seconds
     setTimeout(() => {
-      setBookingInProgress(false);
-      lastNavigatedRef.current = null;
-    }, 700);
+      setShowNotification(false);
+    }, 5000);
   };
 
   const activeFilterCount = Object.values(filters).filter(filter => filter !== 'any').length;
 
   return (
-    <div className="min-h-screen bg-lp-light-bg flex flex-col">
+    <div className="min-h-screen bg-lp-light-bg flex flex-col w-full overflow-x-hidden relative">
       
-      {/* Header */}
-      <Header user={user} onLogout={handleLogoutClick} />
+      <div className="sticky top-0 z-50 w-full bg-white shadow-sm">
+        <Header user={user} />
+      </div>
 
-      {/* Hero Section - FIXED HEIGHT */}
+      {/* ✅ NOTIFICATION TOAST */}
+      {showNotification && addedItem && (
+        <div className="fixed top-24 right-4 z-[60] animate-slide-in-right">
+          <div className="bg-white rounded-lg shadow-2xl border border-lp-orange/20 overflow-hidden w-80 sm:w-96">
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2 text-green-600 font-bold text-sm">
+                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  Added to Cart
+                </div>
+                <button 
+                  onClick={() => setShowNotification(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex gap-3 mb-4">
+                <img 
+                  src={addedItem.image || "/images/default-amenity.jpg"} 
+                  alt={addedItem.name} 
+                  className="w-16 h-16 object-cover rounded-md flex-shrink-0 bg-gray-100"
+                />
+                <div>
+                  <h4 className="font-bold text-gray-900 line-clamp-1">{addedItem.name}</h4>
+                  <p className="text-xs text-gray-500 mb-1">{addedItem.type}</p>
+                  <p className="text-sm font-semibold text-lp-orange">₱{Number(addedItem.price).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setShowNotification(false)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Add More
+                </button>
+                <button 
+                  onClick={() => navigate('/reservations')}
+                  className="px-3 py-2 bg-lp-orange text-white rounded-md text-sm font-medium hover:bg-lp-orange-hover transition-colors flex items-center justify-center gap-1"
+                >
+                  <ShoppingCart className="w-3 h-3" />
+                  View Cart
+                </button>
+              </div>
+            </div>
+            <div className="h-1 bg-lp-orange/20">
+              <div className="h-full bg-lp-orange animate-progress-bar" style={{ width: '100%' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Section */}
       <section
-        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20"
+        className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20 w-full"
         style={{
           backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImageUrl})`,
         }}
       >
-        <div className="container mx-auto px-4 sm:px-6 text-center">
+        <div className="w-full px-6 text-center">
           <h2 className="text-3xl md:text-6xl font-bold text-white font-header mb-4">
             View All Amenities
           </h2>
           <p className="text-sm md:text-lg text-gray-200 max-w-2xl mx-auto mb-8">
-             Discover all the affordable facilities and services we offer at La Piscina Resort.
+              Discover all the affordable facilities and services we offer at La Piscina Resort.
           </p>
         </div>
       </section>
 
       {/* Main Content */}
-      <main className="flex-grow container mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-grow w-full px-6 py-8">
+        
         {/* Filter Box */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -228,8 +344,25 @@ const Amenities = () => {
         </section>
       </main>
 
-      {/* Footer */}  
       <Footer />
+
+      {/* Animation Styles */}
+      <style>{`
+        @keyframes slide-in-right {
+          from { opacity: 0; transform: translateX(100%); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out forwards;
+        }
+        @keyframes progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .animate-progress-bar {
+          animation: progress 5s linear forwards;
+        }
+      `}</style>
 
     </div>
   );

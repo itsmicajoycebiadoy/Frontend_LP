@@ -10,7 +10,7 @@ const ContactSection = () => {
     ];
 
     return (
-        <section className="py-10 md:py-15 bg-slate-200 border-t border-gray-100">
+        <section className="py-10 md:py-10 ">
             <div className="container mx-auto px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-12 md:mb-20">

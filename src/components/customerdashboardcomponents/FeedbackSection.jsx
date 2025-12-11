@@ -1,8 +1,21 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Loader2, Star, MessageSquareQuote } from "lucide-react";
+import { useAuth } from "../../pages/AuthContext"; // Ensure path is correct based on your folder structure
+import api from "../../config/axios"; // Ensure path is correct
+import { useNavigate } from "react-router-dom";
 
 const FeedbackSection = ({ reviews, isLoading, onOpenModal }) => {
     const reviewsRef = useRef(null);
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    // --- ELIGIBILITY STATE ---
+    const [eligibility, setEligibility] = useState({
+        canReview: false,
+        message: "Login to write a review",
+        bookingId: null
+    });
+
     const categories = [
         { id: 'service', label: 'Service' },
         { id: 'cleanliness', label: 'Cleanliness' },
@@ -21,16 +34,98 @@ const FeedbackSection = ({ reviews, isLoading, onOpenModal }) => {
         return (total / reviews.length).toFixed(1);
     };
 
+    // --- CHECK ELIGIBILITY LOGIC (Same as Feedback Page) ---
+    const checkEligibility = async () => {
+        if (!user || !user.id) {
+            setEligibility({ canReview: false, message: "Please login to leave a review.", bookingId: null });
+            return;
+        }
+    
+        try {
+            // Using /api/reservations based on your backend controller
+            const res = await api.get(`/api/reservations/user/${user.id}`); 
+            
+            let bookingsList = [];
+            if (Array.isArray(res.data)) {
+                bookingsList = res.data;
+            } else if (res.data.reservations) {
+                bookingsList = res.data.reservations;
+            } else if (res.data.data) {
+                bookingsList = res.data.data;
+            }
+    
+            if (bookingsList.length > 0) {
+                // Find valid booking: Checked-In/Completed AND No Feedback
+                const validBooking = bookingsList.find(booking => {
+                    const status = booking.status ? booking.status.toLowerCase() : '';
+                    const isStatusValid = status === 'checked-in' || status === 'completed';
+                    const noFeedback = !booking.has_feedback || booking.has_feedback == 0;
+                    return isStatusValid && noFeedback;
+                });
+                
+                if (validBooking) {
+                    setEligibility({ canReview: true, message: "", bookingId: validBooking.id });
+                } else {
+                    // Specific error messages
+                    const hasPending = bookingsList.some(b => ['pending', 'confirmed'].includes(b.status?.toLowerCase()));
+                    if (hasPending) {
+                        setEligibility({ canReview: false, message: "You can write a review once you have Checked-In." });
+                    } else {
+                        setEligibility({ canReview: false, message: "No eligible stay found for review." });
+                    }
+                }
+            } else {
+                setEligibility({ canReview: false, message: "No bookings found." });
+            }
+        } catch (error) {
+            console.error("Eligibility check error:", error);
+            setEligibility({ canReview: false, message: "Unable to verify booking status." });
+        }
+    };
+
+    useEffect(() => {
+        if(user) {
+            checkEligibility();
+        }
+    }, [user]);
+
+    // --- HANDLE BUTTON CLICK ---
+    const handleWriteReviewClick = () => {
+        if (!user) {
+            // If not logged in, go to login
+            navigate('/login');
+            return;
+        }
+
+        if (eligibility.canReview) {
+            // If eligible, open the modal (pass bookingId if needed by parent)
+            onOpenModal(eligibility.bookingId);
+        } else {
+            // If logged in but not eligible, show alert
+            alert(eligibility.message);
+        }
+    };
+
     return (
         <section className="py-16 md:py-24 bg-white relative overflow-x-hidden">
             <div className="container mx-auto px-4 sm:px-6">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 md:mb-16 gap-6 max-w-7xl mx-auto">
                     <div className="text-center md:text-left">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 font-header mb-2">Guest Experiences</h2>
-                        <p className="text-gray-500 max-w-2xl text-base md:text-lg font-light">See what others are saying about their stay (4.0+ Ratings).</p>
+                        <p className="text-gray-500 max-w-2xl text-base md:text-lg font-light">See what others are saying about their stay.</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button onClick={onOpenModal} className="px-6 py-3 bg-[#ea580c] text-white font-bold uppercase tracking-wider text-xs hover:bg-[#c2410c] transition-all shadow-md rounded-none">Write a Review</button>
+                        {/* MODIFIED BUTTON with onClick handler */}
+                        <button 
+                            onClick={handleWriteReviewClick} 
+                            className={`px-6 py-3 font-bold uppercase tracking-wider text-xs transition-all shadow-md rounded-none ${
+                                !user || eligibility.canReview 
+                                ? "bg-[#ea580c] text-white hover:bg-[#c2410c]" 
+                                : "bg-gray-400 text-white cursor-not-allowed"
+                            }`}
+                        >
+                            Write a Review
+                        </button>
                     </div>
                 </div>
 
@@ -64,7 +159,7 @@ const FeedbackSection = ({ reviews, isLoading, onOpenModal }) => {
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center h-64 text-gray-400"><Loader2 size={32} className="animate-spin text-[#ea580c] mb-2" /><p>Loading reviews...</p></div>
                         ) : (
-                            <div ref={reviewsRef} className="grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth hide-scrollbar auto-cols-[260px] md:auto-cols-[300px]">
+                            <div ref={reviewsRef} className="grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth auto-cols-[260px] md:auto-cols-[300px]">
                                 {reviews.length > 0 ? (
                                     reviews.map((review) => (
                                         <div key={review.id} className="bg-gray-50 border border-gray-100 p-4 rounded-lg shadow-sm hover:shadow-md transition-all h-full flex flex-col justify-between snap-start">

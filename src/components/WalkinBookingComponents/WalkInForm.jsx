@@ -1,153 +1,137 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Calendar, AlertCircle, Clock } from 'lucide-react';
 
 const WalkInForm = ({ formData, setFormData, errors = {} }) => {
-    // Local state para sa duration (hours)
-    const [duration, setDuration] = useState('');
+    // Local state for duration to compute checkout automatically
+    const [durationHours, setDurationHours] = useState('');
 
-    // Function para mag-compute ng Check-out date
-    const calculateCheckOut = (checkInVal, durationVal) => {
-        if (!checkInVal || !durationVal) return;
+    // --- EFFECT: Auto-compute Check-out when Check-in or Duration changes ---
+    useEffect(() => {
+        if (formData.checkInDate && durationHours) {
+            const checkIn = new Date(formData.checkInDate);
+            const hoursToAdd = parseInt(durationHours, 10);
 
-        const date = new Date(checkInVal);
-        const hoursToAdd = parseFloat(durationVal);
+            if (!isNaN(checkIn.getTime()) && !isNaN(hoursToAdd) && hoursToAdd > 0) {
+                checkIn.setHours(checkIn.getHours() + hoursToAdd);
+                
+                // Format to local datetime string (YYYY-MM-DDTHH:mm)
+                const year = checkIn.getFullYear();
+                const month = String(checkIn.getMonth() + 1).padStart(2, '0');
+                const day = String(checkIn.getDate()).padStart(2, '0');
+                const hours = String(checkIn.getHours()).padStart(2, '0');
+                const minutes = String(checkIn.getMinutes()).padStart(2, '0');
+                
+                const computedCheckOut = `${year}-${month}-${day}T${hours}:${minutes}`;
+                
+                setFormData(prev => ({ ...prev, checkOutDate: computedCheckOut }));
+            }
+        }
+    }, [formData.checkInDate, durationHours, setFormData]);
 
-        if (isNaN(hoursToAdd)) return;
-
-        // Add hours
-        date.setHours(date.getHours() + hoursToAdd);
-
-        // Format to "YYYY-MM-DDTHH:mm"
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-
-        const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-        setFormData(prev => ({ ...prev, checkOutDate: formattedDate }));
+    // --- HANDLERS ---
+    const handleCheckInChange = (e) => {
+        setFormData({ ...formData, checkInDate: e.target.value });
     };
 
-    const handleCheckInChange = (e) => {
-        const newCheckIn = e.target.value;
-        setFormData(prev => ({ ...prev, checkInDate: newCheckIn }));
-        if (duration) calculateCheckOut(newCheckIn, duration);
+    const handleCheckOutChange = (e) => {
+        setFormData({ ...formData, checkOutDate: e.target.value });
+        setDurationHours(''); // Clear duration if manually set
     };
 
     const handleDurationChange = (e) => {
-        const newDuration = e.target.value;
-        setDuration(newDuration);
-        if (formData.checkInDate) calculateCheckOut(formData.checkInDate, newDuration);
+        const val = e.target.value;
+        if (val === '' || /^[0-9]+$/.test(val)) {
+            setDurationHours(val);
+        }
     };
 
-    // Helper para sa input classes (nagiging pula pag may error)
+    const handleGuestChange = (e) => {
+        const val = e.target.value;
+        if (val === '' || /^[0-9]+$/.test(val)) {
+            setFormData({ ...formData, numGuest: val });
+        }
+    };
+
     const getInputClass = (fieldName) => {
-        return `w-full px-3 py-2 border rounded-lg outline-none transition-all ${
-            errors[fieldName] 
-                ? 'border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50' 
-                : 'border-gray-300 focus:ring-2 focus:ring-orange-500'
+        return `block w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all sm:text-sm ${
+            errors[fieldName] ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : 'border-gray-200'
         }`;
     };
 
     return (
-        <>
-            {/* Customer Details Section */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-3">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                    <User size={18} className="text-orange-500"/> Customer Details
+        // LAYOUT CHANGE: Changed from space-y-6 to Grid (Side-by-Side)
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start font-sans">
+            
+            {/* LEFT: Customer Details Section */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6 border-b pb-4">
+                    <User className="w-5 h-5 text-orange-500"/> 
+                    Customer Details
                 </h3>
                 
-                {/* Name Input */}
-                <div>
-                    <input 
-                        type="text" 
-                        placeholder="Full Name *" 
-                        value={formData.fullName} 
-                        onChange={e => setFormData({...formData, fullName: e.target.value})} 
-                        className={getInputClass('fullName')}
-                    />
-                    {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/> Full Name is required</p>}
-                </div>
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                        <input type="text" placeholder="Juan Dela Cruz" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className={getInputClass('fullName')} />
+                        {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.fullName}</p>}
+                    </div>
 
-                {/* Contact Input */}
-                <div>
-                    <input 
-                        type="tel" 
-                        placeholder="Contact Number *" 
-                        value={formData.contactNumber} 
-                        onChange={e => setFormData({...formData, contactNumber: e.target.value})} 
-                        className={getInputClass('contactNumber')}
-                    />
-                    {errors.contactNumber && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/> Contact number is required</p>}
-                </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number *</label>
+                        <input type="tel" placeholder="09XXXXXXXXX" value={formData.contactNumber} onChange={e => { const val = e.target.value.replace(/\D/g, '').slice(0, 11); setFormData({...formData, contactNumber: val}); }} className={getInputClass('contactNumber')} />
+                        {errors.contactNumber && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.contactNumber}</p>}
+                    </div>
 
-                {/* Address Input */}
-                <div>
-                    <textarea 
-                        placeholder="Address *" 
-                        value={formData.address} 
-                        onChange={e => setFormData({...formData, address: e.target.value})} 
-                        className={`${getInputClass('address')} resize-none`}
-                        rows="2" 
-                    />
-                    {errors.address && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/> Address is required</p>}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+                        <textarea placeholder="Barangay, City, Province" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className={`${getInputClass('address')} resize-none`} rows="2" />
+                        {errors.address && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.address}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Guests * <span className='text-xs text-gray-400 font-normal ml-1'>(₱50/head/day)</span></label>
+                        <input type="text" inputMode="numeric" placeholder="Total Pax" value={formData.numGuest || ''} onChange={handleGuestChange} className={getInputClass('numGuest')} />
+                        {errors.numGuest && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.numGuest}</p>}
+                    </div>
                 </div>
             </div>
 
-            {/* Schedule Section */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-3">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                    <Calendar size={18} className="text-orange-500"/> Schedule
+            {/* RIGHT: Schedule Section */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6 border-b pb-4">
+                    <Calendar className="w-5 h-5 text-orange-500"/> 
+                    Schedule
                 </h3>
                 
-                {/* Check-In */}
-                <div>
-                    <label className="text-xs text-gray-500 font-semibold mb-1 block">Check-in Date *</label>
-                    <input 
-                        type="datetime-local" 
-                        value={formData.checkInDate} 
-                        onChange={handleCheckInChange} 
-                        className={getInputClass('checkInDate')}
-                    />
-                    {errors.checkInDate && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/> Check-in date is required</p>}
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Date *</label>
+                        <input type="datetime-local" value={formData.checkInDate} onChange={handleCheckInChange} className={getInputClass('checkInDate')} />
+                        {errors.checkInDate && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.checkInDate}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                            <Clock size={16} className="text-orange-500"/> Duration (Hours) 
+                            <span className="text-xs text-gray-400 font-normal">(Auto-computes Check-out)</span>
+                        </label>
+                        <input type="text" inputMode="numeric" placeholder="e.g. 22" value={durationHours} onChange={handleDurationChange} disabled={!formData.checkInDate} className={`block w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all sm:text-sm border-gray-200 ${!formData.checkInDate ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Check-out Date *</label>
+                        <input type="datetime-local" value={formData.checkOutDate} onChange={handleCheckOutChange} className={getInputClass('checkOutDate')} min={formData.checkInDate} />
+                        {errors.checkOutDate && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.checkOutDate}</p>}
+                    </div>
                 </div>
 
-                {/* Duration */}
-                <div>
-                    <label className="text-xs text-gray-500 font-semibold mb-1 block flex items-center gap-1">
-                        <Clock size={12} /> Duration (Hours)
-                    </label>
-                    <input 
-                        type="number" 
-                        placeholder="e.g. 12, 22" 
-                        value={duration}
-                        onChange={handleDurationChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                        min="1"
-                    />
-                </div>
-
-                {/* Check-Out (Auto) */}
-                <div>
-                    <label className="text-xs text-gray-500 font-semibold mb-1 block">Check-out Date *</label>
-                    <input 
-                        type="datetime-local" 
-                        value={formData.checkOutDate} 
-                        onChange={e => setFormData({...formData, checkOutDate: e.target.value})} 
-                        className={getInputClass('checkOutDate')}
-                    />
-                    {errors.checkOutDate && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/> Check-out date is required</p>}
-                    
-                    {/* Additional Date Logic Error (galing sa parent logic) */}
-                    {errors.dateLogic && (
-                        <div className="flex items-center gap-2 mt-2 text-red-600 bg-red-50 p-2 rounded text-xs font-semibold border border-red-100">
-                            <AlertCircle size={14} /> {errors.dateLogic}
-                        </div>
-                    )}
-                </div>
+                {errors.dateLogic && (
+                    <div className="flex items-center gap-2 mt-4 text-red-600 bg-red-50 p-3 rounded-lg text-xs font-semibold border border-red-100">
+                        <AlertCircle size={16} /> {errors.dateLogic}
+                    </div>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 

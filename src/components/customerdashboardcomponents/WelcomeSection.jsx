@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
-import hero1 from "../../../assets/hero1.png";
-import hero2 from "../../../assets/hero2.png";
-import hero3 from "../../../assets/hero3.png";
-import hero4 from "../../../assets/hero4.png";
+import hero1 from "../../assets/hero1.png";
+import hero2 from "../../assets/hero2.png";
+import hero3 from "../../assets/hero3.png";
+import hero4 from "../../assets/hero4.png";
 
 const WelcomeSection = () => {
     const [isVisible, setIsVisible] = useState(false);
@@ -17,7 +17,7 @@ const WelcomeSection = () => {
             const section = document.querySelector('.welcome-section');
             if (section) {
                 const rect = section.getBoundingClientRect();
-                const isSectionVisible = rect.top < window.innerHeight * 0.8;
+                const isSectionVisible = rect.top < window.innerHeight * 0.9;
                 
                 if (isSectionVisible && !sectionVisible) {
                     setSectionVisible(true);
@@ -43,7 +43,7 @@ const WelcomeSection = () => {
     ];
 
     return (
-        <section className={`welcome-section py-16 md:py-24 bg-slate-300 border-b border-gray-100 transition-all duration-700 ${
+        <section className={`welcome-section py-16 md:py-24 ${
             sectionVisible ? 'opacity-100' : 'opacity-0'
         }`}>
             <div className="container mx-auto px-4 sm:px-6">

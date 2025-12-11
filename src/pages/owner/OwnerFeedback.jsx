@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../config/axios';
 import { 
-  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, LineChart, Line 
+  PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { RefreshCw, Filter, Star, MessageSquare, ThumbsUp, ThumbsDown, Minus, BarChart3, Clock, TrendingUp, CheckCircle2, Grid, Calendar } from 'lucide-react';
+import { 
+  RefreshCw, Filter, Star, MessageSquare, TrendingUp, TrendingDown, 
+  CheckCircle2, Grid, User, ArrowUpRight, ArrowDownRight, Minus 
+} from 'lucide-react';
 
 // --- SUB-COMPONENTS ---
 
-const StarRating = ({ rating, max = 5 }) => (
+const StarRating = ({ rating, max = 5, size = 14 }) => (
   <div className="flex items-center gap-0.5">
     {[...Array(max)].map((_, i) => (
       <Star 
         key={i} 
-        size={14} 
+        size={size} 
         className={i < Math.floor(rating) ? "text-amber-400 fill-amber-400" : "text-slate-200"} 
       />
     ))}
@@ -21,25 +23,52 @@ const StarRating = ({ rating, max = 5 }) => (
   </div>
 );
 
-const CategoryStatCard = ({ label, score, color, Icon }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-full hover:shadow-md transition-all">
-    <div className="flex justify-between items-center mb-3">
-      <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">{label}</p>
-      <div className={`p-2 rounded-lg bg-opacity-10`} style={{ backgroundColor: `${color}20` }}>
-        <Icon size={18} style={{ color: color }} />
+// Stat Card with Trend Indicator
+const CategoryStatCard = ({ label, score, prevScore, color, Icon }) => {
+  const diff = Number(score) - Number(prevScore);
+  const isPositive = diff > 0;
+  const isNeutral = diff === 0;
+  
+  // Logic: Positive diff is Good (Green), Negative is Bad (Red)
+  const trendColor = isNeutral ? 'text-slate-400' : (isPositive ? 'text-emerald-600' : 'text-rose-500');
+  const TrendIcon = isNeutral ? Minus : (isPositive ? ArrowUpRight : ArrowDownRight);
+  const trendBg = isNeutral ? 'bg-slate-100' : (isPositive ? 'bg-emerald-50' : 'bg-rose-50');
+
+  // Only show trend if there is a previous score to compare against
+  const showTrend = prevScore > 0;
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-full hover:shadow-md transition-all">
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">{label}</p>
+        <div className={`p-2 rounded-lg bg-opacity-10`} style={{ backgroundColor: `${color}20` }}>
+          <Icon size={18} style={{ color: color }} />
+        </div>
+      </div>
+      <div>
+          <div className="flex items-end gap-2 mb-1">
+            <h3 className="text-3xl font-extrabold text-slate-800">{score}</h3>
+            {showTrend && (
+                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${trendBg} ${trendColor} mb-1.5`}>
+                    <TrendIcon size={10} strokeWidth={3} />
+                    <span>{Math.abs(diff).toFixed(1)}</span>
+                </div>
+            )}
+          </div>
+          
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+            <div 
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${(score / 5) * 100}%`, backgroundColor: color }}
+            ></div>
+          </div>
+          {showTrend && (
+             <p className="text-[10px] text-slate-400 mt-2">vs {prevScore} prev. period</p>
+          )}
       </div>
     </div>
-    <div>
-        <h3 className="text-3xl font-extrabold text-slate-800">{score}</h3>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
-        <div 
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${(score / 5) * 100}%`, backgroundColor: color }}
-        ></div>
-        </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const FeedbackItem = ({ feedback }) => {
   const sentiment = useMemo(() => {
@@ -49,62 +78,53 @@ const FeedbackItem = ({ feedback }) => {
   }, [feedback.average]);
 
   return (
-    <div className="p-4 sm:p-6 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
-      <div className="flex gap-4">
-        {/* Avatar */}
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600">
-          {feedback.customerName ? feedback.customerName.charAt(0).toUpperCase() : <MessageSquare size={20} className="text-white/80" />}
+    <div className="p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
+      <div className="flex gap-3">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm shrink-0 bg-gradient-to-br from-slate-600 to-slate-800">
+          {feedback.customerName ? feedback.customerName.charAt(0).toUpperCase() : <User size={16} />}
         </div>
         
         <div className="flex-grow min-w-0">
-          {/* Header Row: Name/Date & Badges */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-            <div>
-              <h4 className="font-bold text-slate-800 text-sm sm:text-base truncate">{feedback.customerName || "Anonymous Guest"}</h4>
-              <p className="text-xs text-slate-500 flex items-center gap-1">
-                <Clock size={10} />
-                {new Date(feedback.date).toLocaleDateString('en-US', { 
-                  year: 'numeric', month: 'short', day: 'numeric' 
-                })}
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 overflow-hidden">
+               <h4 className="font-bold text-slate-800 text-sm truncate">{feedback.customerName || "Anonymous Guest"}</h4>
+               <span className="text-slate-300 text-[10px]">•</span>
+               <p className="text-xs text-slate-400 flex items-center gap-1 shrink-0">
+                 {new Date(feedback.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+               </p>
             </div>
             
-            <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${sentiment.color}`}>
-                {sentiment.label}
-              </span>
-              <div className="hidden sm:block">
-                  <StarRating rating={feedback.average} />
-              </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${sentiment.color}`}>
+                  {sentiment.label}
+               </span>
+               <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                  <Star size={10} className="text-amber-500 fill-amber-500"/>
+                  <span className="text-xs font-bold text-amber-700">{feedback.average.toFixed(1)}</span>
+               </div>
             </div>
           </div>
 
-          {/* Mobile Star Rating (Visible only on small screens) */}
-          <div className="sm:hidden mb-2">
-             <StarRating rating={feedback.average} />
-          </div>
-
-          {/* Comment Bubble */}
-          <div className="bg-white p-3 sm:p-4 rounded-xl rounded-tl-none border border-slate-200 shadow-sm">
-            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed italic">"{feedback.comment}"</p>
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <p className="text-slate-700 text-sm leading-relaxed italic mb-3">"{feedback.comment}"</p>
             
-            {/* Detailed Ratings Breakdown */}
             {(feedback.service !== undefined && feedback.service !== null) && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs">
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-1 text-slate-500"><MessageSquare size={12}/> Service</div>
-                    <StarRating rating={feedback.service} max={5} />
+              <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">
+                    <MessageSquare size={10} className="text-blue-500"/> 
+                    <span>Service</span>
+                    <span className="font-bold text-slate-700 ml-1">{feedback.service.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-1 text-slate-500"><CheckCircle2 size={12}/> Cleanliness</div>
-                    <StarRating rating={feedback.cleanliness} max={5} />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">
+                    <CheckCircle2 size={10} className="text-emerald-500"/> 
+                    <span>Cleanliness</span>
+                    <span className="font-bold text-slate-700 ml-1">{feedback.cleanliness.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-1 text-slate-500"><Grid size={12}/> Amenities</div>
-                    <StarRating rating={feedback.amenities} max={5} />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm">
+                    <Grid size={10} className="text-orange-500"/> 
+                    <span>Amenities</span>
+                    <span className="font-bold text-slate-700 ml-1">{feedback.amenities.toFixed(1)}</span>
                   </div>
-                </div>
               </div>
             )}
           </div>
@@ -121,8 +141,16 @@ const OwnerFeedback = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Date State
-  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
+  const [activeFilter, setActiveFilter] = useState('month');
+  
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    return {
+        startDate: firstDay.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+    };
+  });
   
   const [filterType, setFilterType] = useState('all');
   const [timePeriod, setTimePeriod] = useState('month');
@@ -142,24 +170,67 @@ const OwnerFeedback = () => {
     { value: 'year', label: 'Yearly' }
   ];
 
-  // Fetch all feedback data
+  // --- UPDATED: FETCH WITH SILENT AUTO REFRESH ---
   useEffect(() => {
-    const fetchFeedback = async () => {
-      setLoading(true);
-      try {
+    // 1. Initial Load (Show Spinner)
+    fetchFeedback(false);
+
+    // 2. Set Interval (Silent Background Refresh every 3s)
+    const intervalId = setInterval(() => {
+        fetchFeedback(true);
+    }, 3000);
+
+    // 3. Cleanup
+    return () => clearInterval(intervalId);
+  }, []); // Depend on empty array if API returns ALL data and we filter locally
+
+  // Separate function to handle background check
+  const fetchFeedback = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    
+    try {
         const res = await api.get('/api/feedbacks');
         setFeedbackData(res.data || []);
-      } catch (error) {
+    } catch (error) {
         console.error("Error fetching feedback:", error);
         setFeedbackData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFeedback();
-  }, []);
+    } finally {
+        if (!isBackground) setLoading(false);
+    }
+  };
 
-  // Apply Filtering Logic
+  // Quick Date Handler
+  const handleQuickDate = (type) => {
+    const today = new Date();
+    let start = new Date();
+    const end = new Date(); 
+
+    setActiveFilter(type); 
+
+    if (type === 'today') {
+        start = today;
+    } else if (type === 'week') {
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
+        start.setDate(diff);
+    } else if (type === 'month') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (type === 'year') {
+        start = new Date(today.getFullYear(), 0, 1);
+    }
+    
+    setDateRange({
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0]
+    });
+  };
+
+  const handleManualDateChange = (key, value) => {
+      setDateRange(prev => ({ ...prev, [key]: value }));
+      setActiveFilter('custom'); 
+  };
+
+  // Apply Filtering Logic (Current Period)
   useEffect(() => {
     if (!feedbackData.length) {
       setFilteredData([]);
@@ -171,6 +242,8 @@ const OwnerFeedback = () => {
     if (dateRange.startDate && dateRange.endDate) {
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate);
+      endDate.setHours(23, 59, 59, 999); 
+
       tempData = tempData.filter(feedback => {
         const feedbackDate = new Date(feedback.date);
         return feedbackDate >= startDate && feedbackDate <= endDate;
@@ -180,7 +253,64 @@ const OwnerFeedback = () => {
     setFilteredData(tempData);
   }, [feedbackData, dateRange]);
 
-  // Apply Sentiment Filter for Display
+  // CALCULATE STATS
+  const stats = useMemo(() => {
+    const calcAvg = (data, key) => {
+        if (!data.length) return "0.0";
+        let sum = 0;
+        let count = 0;
+        data.forEach(item => {
+            const val = key === 'average' ? item.average : item[key];
+            if (val !== undefined && val !== null) {
+                sum += val;
+                count++;
+            }
+        });
+        return count === 0 ? "0.0" : (sum / count).toFixed(1);
+    };
+
+    const total = filteredData.length;
+    const current = {
+        average: calcAvg(filteredData, 'average'),
+        service: calcAvg(filteredData, 'service'),
+        cleanliness: calcAvg(filteredData, 'cleanliness'),
+        amenities: calcAvg(filteredData, 'amenities'),
+        positive: filteredData.filter(f => f.average >= 4).length,
+        neutral: filteredData.filter(f => f.average >= 3 && f.average < 4).length,
+        negative: filteredData.filter(f => f.average < 3).length,
+        total
+    };
+
+    let previous = { average: 0, service: 0, cleanliness: 0, amenities: 0 };
+    
+    if (dateRange.startDate && dateRange.endDate && feedbackData.length > 0) {
+        const currentStart = new Date(dateRange.startDate);
+        const currentEnd = new Date(dateRange.endDate);
+        const duration = currentEnd - currentStart; 
+
+        const prevEnd = new Date(currentStart.getTime() - 86400000); 
+        const prevStart = new Date(prevEnd.getTime() - duration);
+        prevEnd.setHours(23, 59, 59, 999);
+
+        const prevData = feedbackData.filter(feedback => {
+            const d = new Date(feedback.date);
+            return d >= prevStart && d <= prevEnd;
+        });
+
+        if (prevData.length > 0) {
+            previous = {
+                average: calcAvg(prevData, 'average'),
+                service: calcAvg(prevData, 'service'),
+                cleanliness: calcAvg(prevData, 'cleanliness'),
+                amenities: calcAvg(prevData, 'amenities'),
+            };
+        }
+    }
+
+    return { current, previous };
+  }, [filteredData, feedbackData, dateRange]);
+
+  // Apply Sentiment Filter for List Display
   const displayedData = useMemo(() => {
     if (filterType === 'all') return filteredData;
     return filteredData.filter(feedback => {
@@ -190,21 +320,6 @@ const OwnerFeedback = () => {
       return true;
     });
   }, [filteredData, filterType]);
-
-  // Calculate Stats
-  const stats = useMemo(() => {
-    const total = filteredData.length;
-    if (total === 0) return { positive: 0, neutral: 0, negative: 0, total: 0, average: 0 };
-
-    const positive = filteredData.filter(f => f.average >= 4).length;
-    const neutral = filteredData.filter(f => f.average >= 3 && f.average < 4).length;
-    const negative = filteredData.filter(f => f.average < 3).length;
-    
-    const sumRating = filteredData.reduce((acc, curr) => acc + curr.average, 0);
-    const average = (sumRating / total).toFixed(1);
-
-    return { positive, neutral, negative, total, average };
-  }, [filteredData]);
 
   // Line Chart Data
   const lineChartData = useMemo(() => {
@@ -239,17 +354,10 @@ const OwnerFeedback = () => {
   }, [filteredData, timePeriod]);
 
   const pieChartData = [
-    { name: 'Positive', value: stats.positive },
-    { name: 'Neutral', value: stats.neutral },
-    { name: 'Negative', value: stats.negative },
+    { name: 'Positive', value: stats.current.positive },
+    { name: 'Neutral', value: stats.current.neutral },
+    { name: 'Negative', value: stats.current.negative },
   ];
-
-  const getCategoryAverage = (key) => {
-    if (filteredData.length === 0) return 0;
-    const valid = filteredData.filter(f => f[key] != null);
-    if (valid.length === 0) return 0;
-    return (valid.reduce((acc, r) => acc + r[key], 0) / valid.length).toFixed(1);
-  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -270,57 +378,112 @@ const OwnerFeedback = () => {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-12 font-sans text-slate-700">
+    <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6 pb-12 font-sans text-slate-700">
       
-      {/* --- HEADER --- */}
+      {/* --- HEADER WITH CONTROLS --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
+        <div className="w-full xl:w-auto">
             <h2 className="text-2xl font-bold text-slate-800">Feedback Analytics</h2>
             <p className="text-sm text-slate-500 mt-1">Monitor guest satisfaction & reviews</p>
         </div>
 
-        {/* Date Filter Controls */}
-        <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-3">
-            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                <input 
-                    type="date" 
-                    value={dateRange.startDate}
-                    onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                    className="w-full sm:w-40 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer shadow-sm uppercase"
-                />
-                <input 
-                    type="date" 
-                    value={dateRange.endDate}
-                    onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                    className="w-full sm:w-40 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer shadow-sm uppercase"
-                />
-            </div>
+        {/* CONTROLS SECTION */}
+        <div className="flex flex-col xl:flex-row gap-4 w-full xl:w-auto bg-slate-50 p-4 rounded-xl border border-slate-100 items-start xl:items-end">
             
-            {(dateRange.startDate || dateRange.endDate) && (
-                <button
-                onClick={() => setDateRange({ startDate: '', endDate: '' })}
-                className="px-4 py-2.5 text-xs font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-1 w-full sm:w-auto"
-                >
-                Clear
-                </button>
-            )}
+            {/* Quick Date Buttons */}
+            <div className="w-full xl:w-auto">
+               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block xl:hidden">Quick Select</label>
+               <div className="grid grid-cols-4 xl:flex gap-1 xl:gap-2 w-full xl:w-auto bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                  {['Today', 'Week', 'Month', 'Year'].map((label) => {
+                      const isSelected = activeFilter === label.toLowerCase();
+                      return (
+                          <button 
+                              key={label} 
+                              type="button" 
+                              onClick={() => handleQuickDate(label.toLowerCase())}
+                              className={`px-3 py-2 text-xs font-semibold rounded-md transition-all flex items-center justify-center xl:min-w-[60px] 
+                                  ${isSelected 
+                                      ? 'bg-orange-50 text-orange-600 border border-orange-200 shadow-sm' 
+                                      : 'text-slate-600 hover:bg-slate-50 hover:text-orange-600 border border-transparent'
+                                  }`}
+                          >
+                              {label}
+                          </button>
+                      );
+                  })}
+               </div>
+            </div>
+
+            {/* Date Inputs */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto items-end">
+                <div className="w-full sm:w-auto flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.startDate}
+                        onChange={(e) => handleManualDateChange('startDate', e.target.value)}
+                        className="w-full sm:w-36 lg:w-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 transition-all cursor-pointer shadow-sm uppercase"
+                    />
+                </div>
+                <div className="w-full sm:w-auto flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.endDate}
+                        onChange={(e) => handleManualDateChange('endDate', e.target.value)}
+                        className="w-full sm:w-36 lg:w-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 transition-all cursor-pointer shadow-sm uppercase"
+                    />
+                </div>
+            </div>
         </div>
       </div>
 
       {/* --- STATS CARDS GRID --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Overall Rating Card */}
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center h-full hover:shadow-md transition-all">
             <span className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Overall Rating</span>
             <div className="flex items-center gap-2">
-                <h3 className="text-4xl font-extrabold text-slate-800">{stats.average}</h3>
+                <h3 className="text-4xl font-extrabold text-slate-800">{stats.current.average}</h3>
                 <Star className="text-amber-400 fill-amber-400" size={28} />
             </div>
-            <p className="text-xs text-slate-400 mt-2 font-medium">Based on {stats.total} reviews</p>
+            {/* Comparison Logic for Overall */}
+            {Number(stats.previous.average) > 0 ? (
+                <div className={`flex items-center gap-1 text-xs font-bold mt-2 ${
+                    Number(stats.current.average) >= Number(stats.previous.average) ? 'text-emerald-600' : 'text-rose-500'
+                }`}>
+                    {Number(stats.current.average) >= Number(stats.previous.average) ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
+                    <span>{Math.abs(Number(stats.current.average) - Number(stats.previous.average)).toFixed(1)}</span>
+                    <span className="text-slate-400 font-medium ml-1">vs prev. period</span>
+                </div>
+            ) : (
+                <p className="text-[10px] text-slate-300 mt-2 font-medium">No previous data for comparison</p>
+            )}
+            <p className="text-[10px] text-slate-400 mt-1">Based on {stats.current.total} reviews</p>
         </div>
 
-        <CategoryStatCard label="Service" score={getCategoryAverage('service')} color={COLORS.service} Icon={MessageSquare} />
-        <CategoryStatCard label="Cleanliness" score={getCategoryAverage('cleanliness')} color={COLORS.cleanliness} Icon={CheckCircle2} />
-        <CategoryStatCard label="Amenities" score={getCategoryAverage('amenities')} color={COLORS.amenities} Icon={Grid} />
+        {/* Category Cards with Trends */}
+        <CategoryStatCard 
+            label="Service" 
+            score={stats.current.service} 
+            prevScore={stats.previous.service}
+            color={COLORS.service} 
+            Icon={MessageSquare} 
+        />
+        <CategoryStatCard 
+            label="Cleanliness" 
+            score={stats.current.cleanliness} 
+            prevScore={stats.previous.cleanliness}
+            color={COLORS.cleanliness} 
+            Icon={CheckCircle2} 
+        />
+        <CategoryStatCard 
+            label="Amenities" 
+            score={stats.current.amenities} 
+            prevScore={stats.previous.amenities}
+            color={COLORS.amenities} 
+            Icon={Grid} 
+        />
       </div>
 
       {/* --- CHARTS SECTION --- */}
@@ -378,8 +541,10 @@ const OwnerFeedback = () => {
                         <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: "12px" }}/>
                     </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                    <span className="text-3xl font-extrabold text-slate-800">{stats.total}</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl font-extrabold text-slate-800 whitespace-nowrap">
+                        {stats.current.total.toLocaleString()}
+                    </span>
                     <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Reviews</span>
                 </div>
             </div>
@@ -391,18 +556,25 @@ const OwnerFeedback = () => {
         <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
             <h3 className="font-bold text-slate-800">Recent Feedback ({displayedData.length})</h3>
             
-            <div className="relative w-full sm:w-auto">
-                <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="w-full sm:w-auto pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-orange-100 outline-none text-slate-600 cursor-pointer appearance-none shadow-sm"
-                >
-                    <option value="all">All Ratings</option>
-                    <option value="positive">Positive (4-5 ★)</option>
-                    <option value="neutral">Neutral (3 ★)</option>
-                    <option value="negative">Negative (1-2 ★)</option>
-                </select>
-                <Filter size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+            {/* Filter Buttons */}
+            <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto w-full sm:w-auto">
+                {[
+                    { id: 'all', label: 'All' },
+                    { id: 'positive', label: 'Positive' },
+                    { id: 'neutral', label: 'Neutral' },
+                    { id: 'negative', label: 'Negative' }
+                ].map(tab => (
+                    <button 
+                        key={tab.id} 
+                        type="button" 
+                        onClick={() => setFilterType(tab.id)} 
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap flex-1 sm:flex-none ${
+                            filterType === tab.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
         </div>
         

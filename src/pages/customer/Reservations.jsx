@@ -31,10 +31,16 @@ const Reservations = () => {
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState(null);
   const [currentReservations, setCurrentReservations] = useState([]);
+  
+  // State for locally hidden history items
+  const [hiddenHistoryIds, setHiddenHistoryIds] = useState([]);
+
+  // ✅ Updated State: Included numGuest (default to 1)
   const [reservationForm, setReservationForm] = useState({
     fullName: "",
     address: "",
     contactNumber: "",
+    numGuest: "1", // Added here
     checkInDate: "",
     checkOutDate: "",
     paymentScreenshot: null,
@@ -43,27 +49,10 @@ const Reservations = () => {
   const [formErrors, setFormErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [reservationCount, setReservationCount] = useState(0);
-  const [isLoadingReservations, setIsLoadingReservations] = useState(false); // ✅ ADDED: Loading state
-
-  // Add this function to test if backend receives user_id
-  const testBackendReceivesUserId = async () => {
-    const userId = user?.id;
-    console.log('🧪 TEST: Sending test request with user_id:', userId);
-    
-    const formData = new FormData();
-    formData.append('test', 'true');
-    formData.append('userId', userId);
-    
-    try {
-      const response = await api.post('/api/transactions/test', formData);
-      console.log('🧪 Test response:', response.data);
-    } catch (error) {
-      console.error('🧪 Test error:', error);
-    }
-  };
-
-  // Call this after login
-  // testBackendReceivesUserId();
+  const [isLoadingReservations, setIsLoadingReservations] = useState(false);
+  
+  // Flag to prevent saving empty cart during initial load
+  const [isCartLoaded, setIsCartLoaded] = useState(false);
 
   // Load user data from AuthContext
   useEffect(() => {
@@ -75,16 +64,54 @@ const Reservations = () => {
     }
   }, [user]);
 
-  // ✅ ADDED: Automatically fetch reservations when user is logged in
+  // Load Cart based on User Identity
+  useEffect(() => {
+    const userId = user?.id || user?._id || user?.userId;
+    const storageKey = userId ? `cart_${userId}` : "cart_guest";
+
+    console.log(`🛒 Loading cart for key: ${storageKey}`);
+
+    const storedCart = localStorage.getItem(storageKey);
+    if (storedCart) {
+      try {
+        const parsedCart = JSON.parse(storedCart);
+        if (Array.isArray(parsedCart)) {
+          setCart(parsedCart);
+        } else {
+          setCart([]);
+        }
+      } catch (e) {
+        console.error("Error parsing cart:", e);
+        setCart([]);
+      }
+    } else {
+      setCart([]);
+    }
+    
+    setIsCartLoaded(true);
+  }, [user]);
+
+  // Save Cart based on User Identity
+  useEffect(() => {
+    if (isCartLoaded) {
+      const userId = user?.id || user?._id || user?.userId;
+      const storageKey = userId ? `cart_${userId}` : "cart_guest";
+      
+      console.log(`💾 Saving cart to key: ${storageKey}`, cart);
+      localStorage.setItem(storageKey, JSON.stringify(cart));
+    }
+  }, [cart, user, isCartLoaded]);
+
+  // Automatically fetch reservations when user is logged in
   useEffect(() => {
     if (user && isAuthenticated) {
       loadReservationsOnPageLoad();
     } else {
-      setReservationCount(0); // Reset count if not logged in
+      setReservationCount(0);
     }
   }, [user, isAuthenticated]);
 
-  // ✅ ADDED: Function to load reservations on page load
+  // Function to load reservations on page load
   const loadReservationsOnPageLoad = async () => {
     if (!user || isLoadingReservations) return;
     
@@ -97,8 +124,6 @@ const Reservations = () => {
         return;
       }
 
-      console.log('📱 Auto-loading reservations for user:', userId);
-      
       const response = await api.get(
         `/api/transactions/user/${userId}`,
         {
@@ -111,26 +136,40 @@ const Reservations = () => {
       const result = response.data;
       
       if (result.success && result.data && result.data.length > 0) {
-        console.log(`📱 Auto-loaded ${result.data.length} reservations`);
-        setReservationCount(result.data.length);
-        
-        // Transform data for modal (if needed later)
-        const transformedReservations = result.data.map(transaction => ({
-          id: transaction.id || transaction.transaction_id,
-          transactionId: transaction.id || transaction.transaction_id,
-          reservationNumber: transaction.transaction_ref || `TXN-${transaction.id}`,
-          amenities: transaction.reservations?.map(r => r.amenity_name) || [],
-          checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
-          checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
-          totalAmount: parseFloat(transaction.total_amount) || 0,
-          downpayment: parseFloat(transaction.downpayment) || 0,
-          balance: parseFloat(transaction.balance) || 0,
-          status: transaction.booking_status || 'Pending',
-          paymentStatus: transaction.payment_status || 'Partial',
-          dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          reservations: transaction.reservations || [],
-          rawTransaction: transaction
-        }));
+        const transformedReservations = result.data.map(transaction => {
+            let extensions = transaction.extensions || [];
+            
+            if (extensions.length === 0 && transaction.extension_history) {
+                if (typeof transaction.extension_history === 'string') {
+                    try {
+                        extensions = JSON.parse(transaction.extension_history);
+                    } catch (e) {
+                        extensions = [];
+                    }
+                } else if (Array.isArray(transaction.extension_history)) {
+                    extensions = transaction.extension_history;
+                }
+            }
+
+            return {
+                id: transaction.id || transaction.transaction_id,
+                transactionId: transaction.id || transaction.transaction_id,
+                reservationNumber: transaction.transaction_ref || `TXN-${transaction.id}`,
+                amenities: transaction.reservations?.map(r => r.amenity_name) || [],
+                checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
+                checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
+                totalAmount: parseFloat(transaction.total_amount) || 0,
+                downpayment: parseFloat(transaction.downpayment) || 0,
+                balance: parseFloat(transaction.balance) || 0,
+                status: transaction.booking_status || 'Pending',
+                paymentStatus: transaction.payment_status || 'Partial',
+                dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+                rawTransaction: {
+                    ...transaction,
+                    extension_history: extensions 
+                }
+            };
+        });
         
         setCurrentReservations(transformedReservations);
       } else {
@@ -138,18 +177,27 @@ const Reservations = () => {
       }
     } catch (error) {
       console.log('📱 Auto-load reservations error:', error);
-      // Don't show alert for auto-load errors
     } finally {
       setIsLoadingReservations(false);
     }
   };
 
-  // ✅ ADDED: Update reservation count when currentReservations changes
+  // Update reservation count (Active Only)
   useEffect(() => {
-    setReservationCount(currentReservations.length);
+    const activeStatuses = ['Pending', 'Confirmed', 'Paid', 'Check-in', 'Checked-In'];
+    const activeCount = currentReservations.filter(r => activeStatuses.includes(r.status)).length;
+    setReservationCount(activeCount);
   }, [currentReservations]);
 
-  // Prevent body scrolling when modal is open
+  // Function to handle local deletion (Hide from view)
+  const handleDeleteHistory = (id) => {
+    if (window.confirm("Are you sure you want to remove this from your history view?")) {
+      setHiddenHistoryIds(prev => [...prev, id]);
+    }
+  };
+
+  const visibleReservations = currentReservations.filter(r => !hiddenHistoryIds.includes(r.id));
+
   useEffect(() => {
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     if (showCartModal || showReservationsModal || reservationToCancel) {
@@ -168,25 +216,6 @@ const Reservations = () => {
     };
   }, [showCartModal, showReservationsModal, reservationToCancel]);
 
-  // Cart persistence
-  useEffect(() => {
-    const storedCart = localStorage.getItem("cart");
-    try {
-      if (storedCart) {
-        const parsed = JSON.parse(storedCart);
-        if (Array.isArray(parsed)) setCart(parsed);
-      }
-    } catch (error) {
-      console.error("Error loading saved cart:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("cart");
-    if (cart.length === 0 && saved) return;
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
-
   // Validation functions
   const validatePhoneNumber = (phone) => {
     const phoneRegex = /^09\d{9}$/;
@@ -202,6 +231,11 @@ const Reservations = () => {
 
     if (!reservationForm.address.trim()) {
       errors.address = "Address is required";
+    }
+    
+    // ✅ Validate Number of Guests
+    if (!reservationForm.numGuest || parseInt(reservationForm.numGuest) <= 0) {
+      errors.numGuest = "Please enter a valid number of guests (minimum 1)";
     }
 
     if (!reservationForm.contactNumber) {
@@ -260,6 +294,15 @@ const Reservations = () => {
       if (formErrors.contactNumber) {
         setFormErrors(prev => ({ ...prev, contactNumber: "" }));
       }
+    } else if (name === "numGuest") {
+        // ✅ Handle number input specifically
+        setReservationForm(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        if (formErrors.numGuest) {
+            setFormErrors(prev => ({ ...prev, numGuest: "" }));
+        }
     } else {
       setReservationForm(prev => {
         const updatedForm = {
@@ -302,7 +345,39 @@ const Reservations = () => {
     }
   };
 
-  // Handle form submission - UPDATED TO CLEAR FORM PROPERLY
+  // ✅ UPDATED CALCULATION LOGIC
+  const calculateTotal = () => {
+    // 1. Calculate number of days
+    let days = 1;
+    if (reservationForm.checkInDate && reservationForm.checkOutDate) {
+      const start = new Date(reservationForm.checkInDate);
+      const end = new Date(reservationForm.checkOutDate);
+      if (end > start) {
+        const diffTime = Math.abs(end - start);
+        // Round up to nearest full day (e.g., 25 hours = 2 days)
+        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      }
+    }
+    // Ensure minimum 1 day
+    days = days > 0 ? days : 1;
+
+    // 2. Calculate Entrance Fees
+    const guestCount = parseInt(reservationForm.numGuest) || 0;
+    const entranceFeePerHead = 50;
+    const totalEntranceFee = guestCount * entranceFeePerHead;
+
+    // 3. Calculate Amenities Total
+    const cartTotal = cart.reduce((total, item) => total + (item.amenity_price * item.quantity), 0);
+
+    // 4. Final Calculation: (Amenities + Entrance) * Days
+    const grandTotal = (cartTotal + totalEntranceFee) * days;
+
+    return grandTotal;
+  };
+
+  const calculateDownpayment = () => calculateTotal() * 0.2;
+
+  // Handle form submission
   const handleReservationSubmit = async (e) => {
     e.preventDefault();
     
@@ -321,17 +396,14 @@ const Reservations = () => {
       formData.append('fullName', reservationForm.fullName);
       formData.append('contactNumber', reservationForm.contactNumber);
       formData.append('address', reservationForm.address);
+      formData.append('numGuest', reservationForm.numGuest); // ✅ Added to payload
       formData.append('checkInDate', reservationForm.checkInDate);
       formData.append('checkOutDate', reservationForm.checkOutDate);
       formData.append('cart', JSON.stringify(cart));
       
-      // ALWAYS include userId if user is logged in
       const userId = user?.id || user?._id || user?.userId;
       if (userId) {
         formData.append('userId', userId);
-        console.log('📝 Including userId in reservation:', userId);
-      } else {
-        console.log('⚠️ No userId available - reservation will be guest');
       }
       
       if (reservationForm.paymentScreenshot) {
@@ -341,24 +413,27 @@ const Reservations = () => {
       const response = await api.post('/api/transactions', formData);
       const result = response.data;
       
-      console.log('📤 Reservation submission result:', result);
-
       if (result.success) {
         alert("Reservation submitted successfully!");
         
-        // ✅ Clear form and cart - ALL fields set to empty
+        // Clear form
         setReservationForm({
-          fullName: "",        // ✅ Empty string
-          address: "",         // ✅ Empty string
-          contactNumber: "",   // ✅ Empty string
+          fullName: "",
+          address: "",
+          contactNumber: "",
+          numGuest: "1", // Reset to 1
           checkInDate: "",
           checkOutDate: "",
           paymentScreenshot: null,
-          userId: user?.id || user?._id || "" // Keep userId for reference if needed
+          userId: user?.id || user?._id || ""
         });
         
+        // Clear cart in state
         setCart([]);
-        localStorage.removeItem("cart");
+        // Force clear in local storage for this user
+        const storageKey = userId ? `cart_${userId}` : "cart_guest";
+        localStorage.removeItem(storageKey);
+
         setImagePreview(null);
         
         const fileInput = document.querySelector('input[name="paymentScreenshot"]');
@@ -366,11 +441,10 @@ const Reservations = () => {
         
         setFormErrors({});
         
-        // ✅ AUTO-RELOAD reservations after successful submission
         if (user && isAuthenticated) {
           setTimeout(() => {
             loadReservationsOnPageLoad();
-          }, 1000); // Wait 1 second for backend to process
+          }, 1000);
         }
         
       } else {
@@ -382,16 +456,22 @@ const Reservations = () => {
     }
   };
 
-  // Cart functions
+  // Cart Functions
   const handleAddToCart = (amenity) => {
-    setCart((prev) => {
-      const exists = prev.find((item) => item.amenity_id === amenity.id);
-      if (exists) return prev;
+    const exists = cart.find((item) => item.amenity_id === amenity.id);
 
-      if (prev.length >= 10) {
-        alert("You can only add up to 10 different amenities in the cart.");
-        return prev;
-      }
+    if (exists) {
+      alert(`${amenity.name} is already in your cart. Please add the quantity in the cart instead.`);
+      return;
+    }
+
+    if (cart.length >= 10) {
+      alert("You can only add up to 10 different amenities in the cart.");
+      return;
+    }
+
+    setCart((prev) => {
+      if (prev.find((item) => item.amenity_id === amenity.id)) return prev;
 
       return [
         ...prev,
@@ -425,15 +505,14 @@ const Reservations = () => {
     });
   };
 
-  const calculateTotal = () =>
-    cart.reduce((total, item) => total + item.amenity_price * item.quantity, 0);
-
-  const calculateDownpayment = () => calculateTotal() * 0.2;
-
-  // Auto-add selected amenity
+  // Auto-add selected amenity with cleanup
   useEffect(() => {
-    if (selectedAmenity) handleAddToCart(selectedAmenity);
-  }, [selectedAmenity]);
+    if (selectedAmenity && isCartLoaded) {
+      handleAddToCart(selectedAmenity);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAmenity, isCartLoaded]); 
 
   // Logout
   const handleLogout = () => {
@@ -441,34 +520,23 @@ const Reservations = () => {
     navigate("/");
   };
 
-  // Fetch reservations based on USER ID - UPDATED with reservation count (for button click)
+  // Fetch reservations based on USER ID
   const fetchReservations = async () => {
     try {
-      console.log('🔄 Fetching reservations...');
-      console.log('👤 Current user:', user);
-      console.log('🔑 User ID:', user?.id || user?._id);
-      console.log('🔑 User ID type:', typeof (user?.id || user?._id));
-
-      // Check if user is logged in
       if (!user) {
         alert("Please log in to view your reservations.");
         setReservationCount(0);
         return;
       }
 
-      // Get user ID from various possible properties
       const userId = user.id || user._id || user.userId;
       
       if (!userId) {
-        console.error('❌ No user ID found in user object:', user);
         alert("User ID not found. Please log in again.");
         setReservationCount(0);
         return;
       }
 
-      console.log('📡 Calling API with user ID:', userId);
-      
-      // Try the user-specific endpoint first
       try {
         const response = await api.get(
           `/api/transactions/user/${userId}`,
@@ -479,76 +547,74 @@ const Reservations = () => {
           }
         );
         
-        console.log('📡 API Response status:', response.status);
-        
         const result = response.data;
-        console.log('📊 API Result:', result);
         
         if (result.success) {
           if (result.data && result.data.length > 0) {
-            console.log(`✅ Found ${result.data.length} reservations`);
             
-            // ✅ Set reservation count
-            setReservationCount(result.data.length);
-            
-            // Transform the data to match your frontend structure
             const transformedReservations = result.data.map(transaction => {
-              console.log('📋 Transaction data:', transaction);
-              
-              return {
-                id: transaction.id || transaction.transaction_id,
-                transactionId: transaction.id || transaction.transaction_id,
-                reservationNumber: transaction.transaction_ref || `TXN-${transaction.id}`,
-                amenities: transaction.reservations?.map(r => r.amenity_name) || [],
-                checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
-                checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
-                totalAmount: parseFloat(transaction.total_amount) || 0,
-                downpayment: parseFloat(transaction.downpayment) || 0,
-                balance: parseFloat(transaction.balance) || 0,
-                status: transaction.booking_status || 'Pending',
-                paymentStatus: transaction.payment_status || 'Partial',
-                dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-                reservations: transaction.reservations || [],
-                rawTransaction: transaction
-              };
+                let extensions = transaction.extensions || [];
+                
+                if (extensions.length === 0 && transaction.extension_history) {
+                    if (typeof transaction.extension_history === 'string') {
+                        try {
+                            extensions = JSON.parse(transaction.extension_history);
+                        } catch (e) {
+                            extensions = [];
+                        }
+                    } else if (Array.isArray(transaction.extension_history)) {
+                        extensions = transaction.extension_history;
+                    }
+                }
+
+                return {
+                    id: transaction.id || transaction.transaction_id,
+                    transactionId: transaction.id || transaction.transaction_id,
+                    reservationNumber: transaction.transaction_ref || `TXN-${transaction.id}`,
+                    amenities: transaction.reservations?.map(r => r.amenity_name) || [],
+                    checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
+                    checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
+                    totalAmount: parseFloat(transaction.total_amount) || 0,
+                    downpayment: parseFloat(transaction.downpayment) || 0,
+                    balance: parseFloat(transaction.balance) || 0,
+                    status: transaction.booking_status || 'Pending',
+                    paymentStatus: transaction.payment_status || 'Partial',
+                    dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+                    rawTransaction: {
+                        ...transaction,
+                        extension_history: extensions
+                    }
+                };
             });
             
-            console.log('🎯 Transformed reservations:', transformedReservations);
             setCurrentReservations(transformedReservations);
             setShowReservationsModal(true);
           } else {
-            console.log('ℹ️ No reservations found for user');
             setReservationCount(0);
             alert("You don't have any reservations yet. Make your first reservation!");
           }
         } else {
-          console.error('❌ API returned error:', result.message);
           setReservationCount(0);
           alert("Failed to load reservations: " + (result.message || 'Unknown error'));
         }
         
       } catch (apiError) {
-        console.error('❌ API call failed:', apiError);
+        console.error('API call failed, trying fallback:', apiError);
         setReservationCount(0);
-        
-        // Fallback to customer search by name and contact number
-        console.log('🔄 Trying fallback method...');
         await fetchReservationsFallback();
       }
       
     } catch (error) {
-      console.error('💥 Fetch reservations error:', error);
+      console.error('Fetch reservations error:', error);
       setReservationCount(0);
       alert("Cannot load reservations. Please try again later.");
     }
   };
 
-  // Fallback method using name and contact number - UPDATED with reservation count
+  // Fallback method
   const fetchReservationsFallback = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('userReservations') || '{}');
-      
-      // Try to get user info from various sources
       const customerName = user?.fullName || user?.name || user?.username || userData.fullName;
       const contactNumber = user?.contactNumber || user?.phone || userData.contactNumber;
       
@@ -557,8 +623,6 @@ const Reservations = () => {
         setReservationCount(0);
         return;
       }
-      
-      console.log('🔄 Fallback search with:', { customerName, contactNumber });
       
       const response = await api.get(
         `/api/transactions/customer`,
@@ -571,26 +635,43 @@ const Reservations = () => {
       );
       
       const result = response.data;
-      console.log('📊 Fallback result:', result);
       
       if (result.success && result.data.length > 0) {
-        const transformed = result.data.map(transaction => ({
-          id: transaction.id,
-          transactionId: transaction.id,
-          reservationNumber: transaction.transaction_ref,
-          amenities: transaction.reservations?.map(r => r.amenity_name) || [],
-          checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
-          checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
-          totalAmount: parseFloat(transaction.total_amount) || 0,
-          downpayment: parseFloat(transaction.downpayment) || 0,
-          balance: parseFloat(transaction.balance) || 0,
-          status: transaction.booking_status || 'Pending',
-          paymentStatus: transaction.payment_status || 'Partial',
-          dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          reservations: transaction.reservations || []
-        }));
+        const transformed = result.data.map(transaction => {
+             let extensions = transaction.extensions || [];
+             
+             if (extensions.length === 0 && transaction.extension_history) {
+                 if (typeof transaction.extension_history === 'string') {
+                     try {
+                         extensions = JSON.parse(transaction.extension_history);
+                     } catch (e) {
+                         extensions = [];
+                     }
+                 } else if (Array.isArray(transaction.extension_history)) {
+                     extensions = transaction.extension_history;
+                 }
+             }
+
+            return {
+                id: transaction.id,
+                transactionId: transaction.id,
+                reservationNumber: transaction.transaction_ref,
+                amenities: transaction.reservations?.map(r => r.amenity_name) || [],
+                checkInDate: transaction.reservations?.[0]?.check_in_date || transaction.check_in_date,
+                checkOutDate: transaction.reservations?.[0]?.check_out_date || transaction.check_out_date,
+                totalAmount: parseFloat(transaction.total_amount) || 0,
+                downpayment: parseFloat(transaction.downpayment) || 0,
+                balance: parseFloat(transaction.balance) || 0,
+                status: transaction.booking_status || 'Pending',
+                paymentStatus: transaction.payment_status || 'Partial',
+                dateBooked: transaction.created_at ? transaction.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+                rawTransaction: {
+                    ...transaction,
+                    extension_history: extensions
+                }
+            };
+        });
         
-        setReservationCount(result.data.length);
         setCurrentReservations(transformed);
         setShowReservationsModal(true);
         
@@ -620,10 +701,15 @@ const Reservations = () => {
         const result = response.data;
 
         if (result.success) {
-          setCurrentReservations(prev => prev.filter(r => r.id !== reservationToCancel.id));
+          // Update the list locally to reflect status change immediately
+          setCurrentReservations(prev => prev.map(r => {
+             if (r.id === reservationToCancel.id) {
+               return { ...r, status: 'Cancelled' };
+             }
+             return r;
+          }));
+
           alert(`Reservation ${reservationToCancel.reservationNumber} has been cancelled.`);
-          // ✅ Update count after cancellation
-          setReservationCount(prev => prev - 1);
         } else {
           alert("Failed to cancel reservation: " + result.message);
         }
@@ -653,14 +739,12 @@ const Reservations = () => {
     <div className="min-h-screen flex flex-col font-body">
       <Header user={user} onLogout={handleLogout} />
 
-      {/* Hero Section */}
       <HeroSection
         title="Your Reservations"
         description="Manage your bookings and create new reservations at La Piscina Resort."
         backgroundImageUrl={backgroundImageUrl}
       />
 
-      {/* Action Buttons - UPDATED with reservationCount prop */}
       <ActionButtons
         onViewReservations={fetchReservations}
         onOpenCart={() => setShowCartModal(true)}
@@ -668,14 +752,12 @@ const Reservations = () => {
         reservationCount={reservationCount}
       />
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 w-full bg-lp-light-bg">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-          {/* Show login message if not authenticated */}
           {!isAuthenticated && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800">
-                <strong>Note:</strong> You are not logged in. Please log in to save your reservation history.
+                <strong>Note:</strong> You are not logged in. Your cart items will be saved as a guest. Log in to save them to your account.
               </p>
             </div>
           )}
@@ -694,12 +776,12 @@ const Reservations = () => {
         </div>
       </main>
 
-      {/* MODALS */}
       <ReservationsModal
         isOpen={showReservationsModal}
         onClose={() => setShowReservationsModal(false)}
-        reservations={currentReservations}
+        reservations={visibleReservations}
         onCancelReservation={handleCancelReservation}
+        onDeleteHistory={handleDeleteHistory}
       />
 
       <CartModal

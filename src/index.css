@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  overflow-y: scroll;
+}
+
 /* FONT FACE DECLARATIONS */
 @font-face {
   font-family: 'FontHeader';
@@ -44,6 +48,8 @@
 
 /* BODY STYLES */
 body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   font-family: 'FontBodyRegular', sans-serif;
   background-color: var(--color-lp-light-bg);
   color: var(--color-lp-dark);
@@ -94,28 +100,6 @@ input:focus {
   cursor: pointer;
 }
 
-/* SCROLLBAR UTILITIES */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #fed7aa;
-  border-radius: 4px;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
 
 /* CAROUSEL UTILITIES */
 .snap-x {
@@ -190,27 +174,27 @@ html {
 
 /* Animation Classes */
 .animate-fade-in {
-  animation: fadeIn 0.6s ease-out forwards;
+  animation: fadeIn 0.7s ease-out forwards;
 }
 
 .animate-fade-out {
-  animation: fadeOut 0.6s ease-out forwards;
+  animation: fadeOut 0.7s ease-out forwards;
 }
 
 .animate-slide-in-up {
-  animation: slideInUp 0.8s ease-out forwards;
+  animation: slideInUp 0.9s ease-out forwards;
 }
 
 .animate-slide-in-down {
-  animation: slideInDown 0.8s ease-out forwards;
+  animation: slideInDown 0.9s ease-out forwards;
 }
 
 .animate-slide-in-left {
-  animation: slideInLeft 0.8s ease-out forwards;
+  animation: slideInLeft 0.9s ease-out forwards;
 }
 
 .animate-slide-in-right {
-  animation: slideInRight 0.8s ease-out forwards;
+  animation: slideInRight 0.9s ease-out forwards;
 }
 
 /* Hide elements initially for animations */
@@ -221,4 +205,30 @@ html {
 /* Ensure elements stay visible after animation */
 .forwards {
   animation-fill-mode: forwards;
+}
+
+/* GLOBAL CUSTOM SCROLLBAR */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #ea580c #f1f1f1;
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ea580c, #f97316);
+  border-radius: 4px;
+  border: 1px solid #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #c2410c, #ea580c);
 }
