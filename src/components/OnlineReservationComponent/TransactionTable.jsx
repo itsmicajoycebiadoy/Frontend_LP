@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../config/axios';
-import { Eye, Clock, Plus, Info, LogIn, Ban, LogOut, ChevronRight, Calendar, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Eye, Clock, Plus, Info, LogIn, Ban, LogOut, ChevronRight, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
 
 // Import Modals
 import { 
@@ -69,7 +69,7 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
       await api.put(`/api/transactions/${id}/status`, { booking_status: newStatus });
       showAlert('success', `Status updated to ${newStatus}`);
       await fetchTransactions(true); closeAllModals();
-    } catch (error) { showAlert('error', "Failed to update status."); } finally { setProcessLoading(false); }
+    } catch (error) { showAlert(error, "Failed to update status."); } finally { setProcessLoading(false); }
   };
 
   const processCheckIn = async () => {
@@ -78,7 +78,7 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
     try {
       await api.put(`/api/transactions/${selectedTransaction.id}/status`, { booking_status: 'Checked-In', balance: 0, payment_status: 'Fully Paid' });
       showAlert('success', `Check-in successful!`); await fetchTransactions(true); closeAllModals();
-    } catch (error) { showAlert('error', 'Failed to check-in customer.'); } finally { setProcessLoading(false); }
+    } catch (error) { showAlert(error, 'Failed to check-in customer.'); } finally { setProcessLoading(false); }
   };
 
   const processExtend = async (extensionData) => {
@@ -91,7 +91,7 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
         additional_cost: extensionData.additionalAmount, additional_hours: extensionData.extensionValue, extension_type: 'Hourly', extended_items: extensionData.extended_items
       });
       showAlert('success', `Extended successfully! Fee: ₱${extensionData.additionalAmount}`); await fetchTransactions(true); closeAllModals();
-    } catch (error) { showAlert('error', 'Error extending booking.'); } finally { setProcessLoading(false); }
+    } catch (error) { showAlert(error, 'Error extending booking.'); } finally { setProcessLoading(false); }
   };
 
   const processPaymentAction = async (action) => { if (!selectedTransaction) return; await handleStatusUpdate(selectedTransaction.id, action); };
@@ -99,7 +99,10 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
   const openCheckInModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, checkIn: true })); };
   const openExtendModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, extend: true })); };
   const openProofModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, proof: true })); };
+  
+  // ✅ Updated to support passing detailType
   const openDetailModal = (t, type) => { setSelectedTransaction(t); setDetailType(type); setModals(prev => ({ ...prev, detail: true })); };
+  
   const openActionModal = (type, t) => { setSelectedTransaction(t); setActionType(type); setModals(prev => ({ ...prev, action: true })); };
   const openMobileModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, mobile: true })); };
 
@@ -169,6 +172,8 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
                       <td className="px-4 py-4"><div className="text-gray-700 font-medium text-xs truncate max-w-[150px]" title={amenities}>{amenities}</div><button onClick={() => openDetailModal(t, 'amenities')} className="text-[11px] text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 font-semibold" type="button"><Info size={12} /> View details</button></td>
                       <td className="px-4 py-4">{(t.extensions || []).length > 0 ? <div className="flex flex-col items-start"><span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">{t.extensions.length} added</span><button onClick={() => openDetailModal(t, 'extensions')} className="text-[11px] text-purple-500 hover:text-purple-700 flex items-center gap-1 mt-1 font-semibold" type="button"><Plus size={10} /> See breakdown</button></div> : <span className="text-gray-300 text-xs">-</span>}</td>
                       <td className="px-4 py-4 text-center"><div className="flex flex-col items-center text-xs"><span className="text-gray-500">{inDT.date} <b className="text-green-700">{inDT.time}</b></span><span className="text-gray-300 my-0.5">↓</span><span className="text-gray-500">{outDT.date} <b className="text-orange-700">{outDT.time}</b></span></div></td>
+                      
+                      {/* ✅ PAYMENT COLUMN MODIFIED TO INCLUDE "View Breakdown" BUTTON */}
                       <td className="px-4 py-4 text-center align-middle">
                           <div className="flex flex-col items-center justify-center">
                               <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border mb-1 ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>
@@ -182,14 +187,21 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
                               ) : (
                                   <span className="font-bold text-gray-900 text-sm">₱{currentTotal.toLocaleString()}</span>
                               )}
+                              <button 
+                                onClick={() => openDetailModal(t, 'payment')} 
+                                className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                type="button"
+                              >
+                                <Info size={10} /> View Breakdown
+                              </button>
                           </div>
                       </td>
+
                       <td className="px-4 py-4 text-center"><span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${t.booking_status === 'Checked-In' ? 'bg-blue-50 text-blue-700 border-blue-200' : t.booking_status === 'Completed' ? 'bg-gray-50 text-gray-600 border-gray-200' : t.booking_status === 'Confirmed' ? 'bg-green-50 text-green-700 border-green-200' : t.booking_status === 'Pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-600 border-red-200'}`}>{t.booking_status}</span></td>
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           {t.proof_of_payment && <button onClick={() => openProofModal(t)} className="flex items-center gap-1 pl-1.5 pr-2 py-1.5 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors shadow-sm" title="Check Payment" type="button"><Eye size={14}/><span className="text-[11px] font-bold uppercase">Proof</span></button>}
                           
-                          {/* ✅ ADDED DISABLED STATE TO ALL ACTION BUTTONS */}
                           {t.booking_status === 'Confirmed' && (
                             <>
                               <button onClick={() => openCheckInModal(t)} disabled={isActionDisabled} className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Check In" type="button">
@@ -245,7 +257,7 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
       <MobileTransactionModal 
         transaction={selectedTransaction} 
         isOpen={modals.mobile} 
-        loading={isActionDisabled} // ✅ PASSED LOADING STATE
+        loading={isActionDisabled} 
         onClose={closeAllModals} 
         onViewProof={() => openProofModal(selectedTransaction)} 
         onViewDetails={(t, type) => openDetailModal(t, type)} 
