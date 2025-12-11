@@ -26,7 +26,7 @@ const WalkInBooking = () => {
   // --- STATE FOR CREATION ONLY ---
   const [amenities, setAmenities] = useState([]);
   const [loading, setLoading] = useState(false); 
-  const [formData, setFormData] = useState({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '' });
+  const [formData, setFormData] = useState({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '', numGuest: '' }); // Ensure numGuest is initialized
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -60,7 +60,14 @@ const WalkInBooking = () => {
     setLoading(true); 
     try {
       const fd = new FormData();
-      Object.keys(formData).forEach(k => fd.append(k, formData[k]));
+      
+      // 👇 IMPORTANT FIX: Explicit mapping for DB compatibility
+      fd.append('num_guest', formData.numGuest || 0); 
+      
+      Object.keys(formData).forEach(k => {
+          if (k !== 'numGuest') fd.append(k, formData[k]); // Skip duplicate numGuest
+      });
+
       fd.append('booking_type', 'Walk-in'); fd.append('bookingStatus', 'Confirmed'); fd.append('paymentStatus', 'Fully Paid');
       fd.append('totalAmount', calculateTotal()); fd.append('downpayment', calculateTotal()); fd.append('balance', 0);
       fd.append('cart', JSON.stringify(cart));
@@ -73,13 +80,15 @@ const WalkInBooking = () => {
           setShowSuccess(true); 
           showToast("Booking created successfully!", 'success');
       }
-    } catch (error) { showToast("Failed to create booking.", 'error'); } 
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to create booking.", 'error'); } 
     finally { setLoading(false); }
   };
 
   const handleCloseSuccess = () => { 
       setShowSuccess(false); 
-      setFormData({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '' }); 
+      setFormData({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '', numGuest: '' }); 
       setCart([]); 
       setTableRefreshTrigger(prev => prev + 1);
   };
