@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import ImagePreview from './ImagePreview'; // Make sure this path is correct
-import { User, Upload, CreditCard, AlertCircle } from 'lucide-react';
+import ImagePreview from './ImagePreview'; 
+import { User, Upload, CreditCard, AlertCircle, AlertTriangle } from 'lucide-react';
 
 const ReservationForm = ({
   reservationForm,
   formErrors,
   imagePreview,
   cart,
+  amenities = [], // ✅ Tumatanggap na ng live availability data
   calculateTotal,
   calculateDownpayment,
   handleReservationInputChange,
@@ -15,6 +16,38 @@ const ReservationForm = ({
 }) => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Local state para sa real-time validation errors
+  const [localErrors, setLocalErrors] = useState({});
+
+  // --- 1. CONFLICT CHECKER LOGIC ---
+  const checkConflict = (cartItem) => {
+    // ✅ VALIDATE AGAD: Basta may Check-in date, simulan na ang checking.
+    // Tinanggal na natin yung `&& !reservationForm.checkOutDate`
+    if (!reservationForm.checkInDate) return null;
+
+    // Hanapin ang live status ng amenity galing sa Parent
+    const amenityStatus = amenities.find(a => a.id === cartItem.amenity_id);
+    
+    // Kung hindi makita, assume safe muna
+    if (!amenityStatus) return null;
+    
+    // Check kung ang quantity sa cart ay lagpas sa slots_left
+    // Dito lalabas na "0" ang slots_left kung may naka-book sa oras ng Check-in mo.
+    if (cartItem.quantity > amenityStatus.slots_left) {
+        return {
+            isConflict: true,
+            remaining: amenityStatus.slots_left
+        };
+    }
+    return null;
+  };
+
+  // Check kung may KAHIT ISANG conflict sa cart
+  const hasAnyConflict = cart.some(item => {
+      const conflict = checkConflict(item);
+      return conflict && conflict.isConflict;
+  });
 
   // Prevent background scrolling when modal is active
   useEffect(() => {
@@ -28,8 +61,46 @@ const ReservationForm = ({
     };
   }, [showConfirmationModal]);
 
+  // Local Input Handler (Real-time Validation)
+  const handleLocalInputChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'contactNumber') {
+      let error = "";
+      if (value && !/^\d*$/.test(value)) return;
+
+      if (!value) {
+        error = "Contact number is required.";
+      } else if (!value.startsWith('09')) {
+        error = "Contact number must start with 09.";
+      } else if (value.length > 11) {
+        error = "Contact number cannot exceed 11 digits."; 
+      } else if (value.length === 11) {
+         error = ""; 
+      }
+      setLocalErrors(prev => ({ ...prev, contactNumber: error }));
+    }
+    handleReservationInputChange(e);
+  };
+
   const handleConfirmClick = (e) => {
     e.preventDefault();
+
+    const contactNum = reservationForm.contactNumber || "";
+    if (!contactNum.startsWith('09') || contactNum.length !== 11) {
+        setLocalErrors(prev => ({ 
+            ...prev, 
+            contactNumber: "Please enter a valid 11-digit number starting with 09." 
+        }));
+        return; 
+    }
+
+    // Block kung may conflict
+    if (hasAnyConflict) {
+        alert("Please remove unavailable amenities from your cart before proceeding.");
+        return;
+    }
+
     setShowConfirmationModal(true);
   };
 
@@ -37,11 +108,7 @@ const ReservationForm = ({
     setIsSubmitting(true);
     setShowConfirmationModal(false);
     
-    const syntheticEvent = {
-      preventDefault: () => {},
-      target: {}
-    };
-    
+    const syntheticEvent = { preventDefault: () => {}, target: {} };
     try {
       await handleReservationSubmit(syntheticEvent);
     } finally {
@@ -86,7 +153,7 @@ const ReservationForm = ({
                   type="text"
                   name="fullName"
                   value={reservationForm.fullName || ''}
-                  onChange={handleReservationInputChange}
+                  onChange={handleLocalInputChange}
                   required
                   className={`block w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
                     formErrors.fullName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'
@@ -103,16 +170,19 @@ const ReservationForm = ({
                   type="tel"
                   name="contactNumber"
                   value={reservationForm.contactNumber || ''}
-                  onChange={handleReservationInputChange}
+                  onChange={handleLocalInputChange}
                   required
                   maxLength="11"
                   className={`block w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
-                    formErrors.contactNumber ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'
+                    (localErrors.contactNumber || formErrors.contactNumber) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'
                   }`}
                   placeholder="09XXXXXXXXX"
                 />
-                {formErrors.contactNumber ? (
-                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {formErrors.contactNumber}</p>
+                {(localErrors.contactNumber || formErrors.contactNumber) ? (
+                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3 h-3"/> 
+                    {localErrors.contactNumber || formErrors.contactNumber}
+                  </p>
                 ) : (
                   <p className="mt-1 text-xs text-gray-400">Must be 11 digits starting with 09</p>
                 )}
@@ -124,7 +194,7 @@ const ReservationForm = ({
                 <textarea
                   name="address"
                   value={reservationForm.address || ''}
-                  onChange={handleReservationInputChange}
+                  onChange={handleLocalInputChange}
                   required
                   rows="2"
                   className={`block w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
@@ -142,7 +212,7 @@ const ReservationForm = ({
                   type="number"
                   name="numGuest"
                   value={reservationForm.numGuest || ''}
-                  onChange={handleReservationInputChange}
+                  onChange={handleLocalInputChange}
                   required
                   min="1"
                   className={`block w-full px-4 py-3 border rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
@@ -161,7 +231,7 @@ const ReservationForm = ({
                     type="datetime-local"
                     name="checkInDate"
                     value={reservationForm.checkInDate || ''}
-                    onChange={handleReservationInputChange}
+                    onChange={handleLocalInputChange}
                     required
                     min={new Date().toISOString().slice(0, 16)}
                     className={`block w-full px-4 py-3 border rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
@@ -177,7 +247,7 @@ const ReservationForm = ({
                     type="datetime-local"
                     name="checkOutDate"
                     value={reservationForm.checkOutDate || ''}
-                    onChange={handleReservationInputChange}
+                    onChange={handleLocalInputChange}
                     required
                     min={reservationForm.checkInDate || new Date().toISOString().slice(0, 16)}
                     className={`block w-full px-4 py-3 border rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-lp-orange/50 focus:border-lp-orange transition-all sm:text-sm ${
@@ -198,7 +268,6 @@ const ReservationForm = ({
             </h3>
             
             <div className="space-y-4">
-              {/* Preview stays if image exists */}
               {imagePreview && (
                 <div className="mb-4">
                   <ImagePreview
@@ -208,7 +277,6 @@ const ReservationForm = ({
                 </div>
               )}
 
-              {/* Simplified Choose File Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload Screenshot *
@@ -218,7 +286,7 @@ const ReservationForm = ({
                   <input
                     type="file"
                     name="paymentScreenshot"
-                    onChange={handleReservationInputChange}
+                    onChange={handleLocalInputChange}
                     required={!reservationForm.paymentScreenshot}
                     accept="image/*"
                     id="file-upload"
@@ -258,35 +326,69 @@ const ReservationForm = ({
           <div className="lg:sticky lg:top-24 space-y-6">
             
             {/* Order Summary Card */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="bg-lp-orange p-4">
+            <div className={`bg-white rounded-2xl shadow-lg border overflow-hidden ${hasAnyConflict ? 'border-red-200' : 'border-gray-100'}`}>
+              
+              {/* Header changes color based on conflict */}
+              <div className={`p-4 transition-colors duration-300 ${hasAnyConflict ? 'bg-red-600' : 'bg-lp-orange'}`}>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-white" />
-                  Order Summary
+                  {hasAnyConflict ? <AlertTriangle className="w-5 h-5"/> : <CreditCard className="w-5 h-5" />}
+                  {hasAnyConflict ? 'Issues in Cart' : 'Order Summary'}
                 </h3>
               </div>
               
               <div className="p-5 sm:p-6">
-                <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                   {cart.length === 0 ? (
                     <p className="text-gray-500 text-center py-4 italic text-sm">Your cart is empty.</p>
                   ) : (
-                    cart.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-3">
-                          <span className="bg-gray-100 text-gray-600 w-6 h-6 flex items-center justify-center rounded text-xs font-bold">
-                            {item.quantity}
-                          </span>
-                          <span className="text-gray-700 font-medium truncate max-w-[140px] sm:max-w-[180px]">{item.amenity_name}</span>
+                    cart.map((item) => {
+                      // Check conflict per item
+                      const conflict = checkConflict(item);
+
+                      return (
+                        <div 
+                          key={item.id} 
+                          className={`flex flex-col gap-1 p-3 rounded-lg border text-sm transition-all ${
+                            conflict 
+                              ? 'bg-red-50 border-red-200' 
+                              : 'bg-white border-transparent'
+                          }`}
+                        >
+                          {/* Top Row: Qty + Name + Price */}
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <span className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-xs font-bold ${
+                                conflict ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {item.quantity}
+                              </span>
+                              <div className="min-w-0">
+                                <span className={`font-medium truncate block ${conflict ? 'text-red-800' : 'text-gray-700'}`}>
+                                  {item.amenity_name}
+                                </span>
+                                {/* Conflict Message */}
+                                {conflict && (
+                                  <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                    <AlertTriangle size={10} />
+                                    {conflict.remaining <= 0 
+                                        ? "FULLY BOOKED" 
+                                        : `Only ${conflict.remaining} left`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`font-semibold ${conflict ? 'text-red-700' : 'text-gray-900'}`}>
+                              ₱{(item.amenity_price * item.quantity).toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-gray-900 font-semibold">₱{(item.amenity_price * item.quantity).toLocaleString()}</span>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
 
-                  {/* Display Entrance Fee ONLY if Guests > 0 AND Cart is not empty */}
+                  {/* Entrance Fee Section */}
                   {cart.length > 0 && reservationForm.numGuest > 0 && (
-                      <div className="flex justify-between items-center text-sm border-t border-dashed pt-2">
+                      <div className="flex justify-between items-center text-sm border-t border-dashed pt-2 px-3">
                       <div className="flex items-center gap-3">
                         <span className="bg-blue-50 text-blue-600 w-6 h-6 flex items-center justify-center rounded text-xs font-bold">
                           {reservationForm.numGuest}
@@ -298,7 +400,7 @@ const ReservationForm = ({
                   )}
                 </div>
 
-                {/* ✅ MODIFIED: VALUES ARE EMPTY IF CART IS EMPTY */}
+                {/* Footer Computations */}
                 <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
                   <div className="flex justify-between text-gray-500 text-sm">
                     <span>Subtotal (Amenities + Entrance)</span>
@@ -322,6 +424,8 @@ const ReservationForm = ({
                       {cart.length > 0 ? `₱${calculateTotal().toLocaleString()}` : ''}
                     </span>
                   </div>
+                  
+                  {/* Downpayment Banner */}
                   <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100 mt-2">
                     <span className="text-orange-800 font-bold text-sm">Downpayment (20%)</span>
                     <span className="text-xl font-extrabold text-lp-orange">
@@ -332,7 +436,7 @@ const ReservationForm = ({
               </div>
             </div>
 
-            {/* Payment Method Card */}
+            {/* Payment Method & Submit Button */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
               <h4 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide text-center">Scan to Pay via GCash</h4>
               
@@ -343,8 +447,7 @@ const ReservationForm = ({
                     alt="GCash QR Code" 
                     className="w-40 h-40 object-contain rounded-lg"
                     onError={(e) => {
-                      e.target.src = "";
-                      console.log("GCash image failed to load");
+                      e.target.style.display = 'none';
                     }}
                   />
                 </div>
@@ -358,17 +461,18 @@ const ReservationForm = ({
 
               <button
                 type="submit"
-                disabled={cart.length === 0 || isSubmitting}
-                className="w-full py-4 bg-lp-orange text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-200 hover:bg-lp-orange-hover hover:shadow-orange-300 transform transition-all active:scale-[0.98] disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                // Disable button kung may conflict
+                disabled={cart.length === 0 || isSubmitting || hasAnyConflict}
+                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+                    hasAnyConflict 
+                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 cursor-not-allowed'
+                    : 'bg-lp-orange text-white hover:bg-lp-orange-hover shadow-orange-200 hover:shadow-orange-300 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed'
+                }`}
               >
                 {isSubmitting ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </>
+                  <>Processing...</>
+                ) : hasAnyConflict ? (
+                  'Remove Unavailable Items'
                 ) : (
                   'Confirm Reservation'
                 )}
@@ -379,7 +483,7 @@ const ReservationForm = ({
         </section>
       </form>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal - (Existing Code, no changes needed inside) */}
       {showConfirmationModal && (
         <>
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-40 transition-opacity"></div>
@@ -409,10 +513,7 @@ const ReservationForm = ({
                     Downpayments are non-refundable once confirmed. Please ensure all details are correct.
                   </p>
                 </div>
-
-                {/* REMOVED RESCHEDULING SECTION */}
                 
-                 {/* Summary inside modal for double checking */}
                  <div className="text-xs text-gray-500 pt-2 border-t">
                   <p>Guests: {reservationForm.numGuest}</p>
                   <p>Total: ₱{calculateTotal().toLocaleString()}</p>
