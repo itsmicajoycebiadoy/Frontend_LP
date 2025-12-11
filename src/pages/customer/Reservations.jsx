@@ -27,6 +27,7 @@ const Reservations = () => {
 
   // State Management
   const [cart, setCart] = useState([]);
+  const [amenities, setAmenities] = useState([]); // ✅ NEW: Store availability data here
   const [showCartModal, setShowCartModal] = useState(false);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState(null);
@@ -40,7 +41,7 @@ const Reservations = () => {
     fullName: "",
     address: "",
     contactNumber: "",
-    numGuest: "1", // Added here
+    numGuest: "1", 
     checkInDate: "",
     checkOutDate: "",
     paymentScreenshot: null,
@@ -101,6 +102,59 @@ const Reservations = () => {
       localStorage.setItem(storageKey, JSON.stringify(cart));
     }
   }, [cart, user, isCartLoaded]);
+
+  // ------------------------------------------------------------------
+  // ✅ FIXED: FETCH AVAILABILITY WITH LOCAL TIME FORMATTING
+  // ------------------------------------------------------------------
+  const fetchAvailability = async () => {
+    try {
+      // 1. Kapag wala pang Check-in, walang gagawin.
+      if (!reservationForm.checkInDate) return;
+
+      let url = '/api/transactions/check-availability';
+      const params = {};
+
+      params.checkIn = reservationForm.checkInDate;
+
+      // 2. CRITICAL CHANGE: Manual Date Formatting (No toISOString)
+      // Para hindi magbago ang oras (Timezone issue fix)
+      if (reservationForm.checkOutDate) {
+        params.checkOut = reservationForm.checkOutDate;
+      } else {
+        const startDate = new Date(reservationForm.checkInDate);
+        
+        // Magdagdag ng 1 minute
+        startDate.setMinutes(startDate.getMinutes() + 1);
+
+        // Manual formatting: YYYY-MM-DDTHH:mm
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, '0');
+        const day = String(startDate.getDate()).padStart(2, '0');
+        const hours = String(startDate.getHours()).padStart(2, '0');
+        const minutes = String(startDate.getMinutes()).padStart(2, '0');
+        
+        const formattedCheckOut = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        params.checkOut = formattedCheckOut;
+      }
+
+      console.log("🔍 Checking Availability params:", params); // Debug log
+
+      const res = await api.get(url, { params });
+      
+      if (res.data.success) {
+        setAmenities(Array.isArray(res.data.data) ? res.data.data : []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch amenities availability:", e);
+    }
+  };
+
+  // ✅ Trigger agad kapag nagbago ang Check-in (kahit wala pang check-out)
+  useEffect(() => {
+    fetchAvailability();
+  }, [reservationForm.checkInDate, reservationForm.checkOutDate]);
+
 
   // Automatically fetch reservations when user is logged in
   useEffect(() => {
@@ -199,22 +253,15 @@ const Reservations = () => {
 
   const visibleReservations = currentReservations.filter(r => !hiddenHistoryIds.includes(r.id));
 
-  // --------------------------------------------------------------------------
-  // 🔥 FIX PARA HINDI "UMISOD" O GUMALAW ANG LAYOUT
-  // Tinanggal na natin yung padding calculation na nagpapa-move sa body.
-  // Ngayon, simple 'overflow: hidden' na lang para ma-disable ang scroll.
-  // --------------------------------------------------------------------------
+  // Disable body scroll on modal open
   useEffect(() => {
     if (showCartModal || showReservationsModal || reservationToCancel) {
-      // Disable scroll lang, wag na galawin ang padding
       document.body.style.overflow = 'hidden';
     } else {
-      // Ibalik sa dati
       document.body.style.overflow = 'unset';
-      document.body.style.paddingRight = ''; // Siguraduhing walang naiwang padding
+      document.body.style.paddingRight = ''; 
     }
 
-    // Cleanup function para sigurado
     return () => {
       document.body.style.overflow = 'unset';
       document.body.style.paddingRight = '';
@@ -238,7 +285,7 @@ const Reservations = () => {
       errors.address = "Address is required";
     }
     
-    // ✅ Validate Number of Guests
+    // Validate Number of Guests
     if (!reservationForm.numGuest || parseInt(reservationForm.numGuest) <= 0) {
       errors.numGuest = "Please enter a valid number of guests (minimum 1)";
     }
@@ -300,7 +347,6 @@ const Reservations = () => {
         setFormErrors(prev => ({ ...prev, contactNumber: "" }));
       }
     } else if (name === "numGuest") {
-        // ✅ Handle number input specifically
         setReservationForm(prev => ({
             ...prev,
             [name]: value
@@ -350,7 +396,6 @@ const Reservations = () => {
     }
   };
 
-  // ✅ UPDATED CALCULATION LOGIC
   const calculateTotal = () => {
     // 1. Calculate number of days
     let days = 1;
@@ -359,11 +404,9 @@ const Reservations = () => {
       const end = new Date(reservationForm.checkOutDate);
       if (end > start) {
         const diffTime = Math.abs(end - start);
-        // Round up to nearest full day (e.g., 25 hours = 2 days)
         days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
       }
     }
-    // Ensure minimum 1 day
     days = days > 0 ? days : 1;
 
     // 2. Calculate Entrance Fees
@@ -396,12 +439,32 @@ const Reservations = () => {
       return;
     }
 
+    // ------------------------------------------------------------------
+    // ✅ NEW: CONFLICT CHECKING GUARD (The "Pulis")
+    // ------------------------------------------------------------------
+    const hasConflict = cart.some(item => {
+        // Find availability for this item
+        const amenityStatus = amenities.find(a => a.id === item.amenity_id);
+        if (!amenityStatus) return false; // If not found, assume safe or handle differently
+        
+        // If qty in cart > slots_left, it's a conflict
+        return item.quantity > amenityStatus.slots_left;
+    });
+
+    if (hasConflict) {
+        alert("Some items in your cart are fully booked or exceed available slots for the selected dates. Please check your cart and update quantities.");
+        // Optional: Open cart modal automatically so they can see which item is red
+        setShowCartModal(true); 
+        return;
+    }
+    // ------------------------------------------------------------------
+
     try {
       const formData = new FormData();
       formData.append('fullName', reservationForm.fullName);
       formData.append('contactNumber', reservationForm.contactNumber);
       formData.append('address', reservationForm.address);
-      formData.append('numGuest', reservationForm.numGuest); // ✅ Added to payload
+      formData.append('numGuest', reservationForm.numGuest); 
       formData.append('checkInDate', reservationForm.checkInDate);
       formData.append('checkOutDate', reservationForm.checkOutDate);
       formData.append('cart', JSON.stringify(cart));
@@ -421,21 +484,18 @@ const Reservations = () => {
       if (result.success) {
         alert("Reservation submitted successfully!");
         
-        // Clear form
         setReservationForm({
           fullName: "",
           address: "",
           contactNumber: "",
-          numGuest: "1", // Reset to 1
+          numGuest: "1", 
           checkInDate: "",
           checkOutDate: "",
           paymentScreenshot: null,
           userId: user?.id || user?._id || ""
         });
         
-        // Clear cart in state
         setCart([]);
-        // Force clear in local storage for this user
         const storageKey = userId ? `cart_${userId}` : "cart_guest";
         localStorage.removeItem(storageKey);
 
@@ -651,8 +711,8 @@ const Reservations = () => {
                      try {
                          extensions = JSON.parse(transaction.extension_history);
                      } catch (e) {
-                        console.log(e);
-                         extensions = [];
+                         console.log(e);
+                          extensions = [];
                      }
                  } else if (Array.isArray(transaction.extension_history)) {
                      extensions = transaction.extension_history;
@@ -774,6 +834,8 @@ const Reservations = () => {
             formErrors={formErrors}
             imagePreview={imagePreview}
             cart={cart}
+            // ✅ NEW: PASSING AMENITIES PROP TO CHILD
+            amenities={amenities}
             calculateTotal={calculateTotal}
             calculateDownpayment={calculateDownpayment}
             handleReservationInputChange={handleReservationInputChange}
@@ -795,6 +857,8 @@ const Reservations = () => {
         isOpen={showCartModal}
         onClose={() => setShowCartModal(false)}
         cart={cart}
+        // ✅ NEW: PASSING AMENITIES PROP TO MODAL (for display validation)
+        amenities={amenities}
         removeFromCart={removeFromCart}
         adjustQuantity={adjustQuantity}
         calculateTotal={calculateTotal}

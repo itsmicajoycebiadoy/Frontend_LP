@@ -1,24 +1,23 @@
 import React from 'react';
 
 const AmenitiesCard = ({ amenity, onBook }) => {
-  // --- 1. LOGIC FROM OLD FILE (PRESERVED) ---
-  // Checks for 'Yes', 'yes', or boolean true
+  // --- 1. LOGIC FIXED: Check Dynamic Slots ---
+  // Kung may "slots_left" galing database, dun tayo babase. Kung wala, fallback sa "available" status.
+  const hasStocks = amenity.slots_left !== undefined ? amenity.slots_left > 0 : true;
+  
   const isAvailable = 
-    amenity.available === 'Yes' || 
+    (amenity.available === 'Yes' || 
     amenity.available === 'yes' || 
-    amenity.available === true;
+    amenity.available === true) && hasStocks;
 
   const handleImageError = (e) => {
-    // Ginamit ko ang 400x600 placeholder para fit sa vertical design
     e.target.src = 'https://via.placeholder.com/400x600?text=No+Image'; 
   };
 
   return (
-    // --- 2. DESIGN & STRUCTURE (ADOPTED) ---
-    // Fixed height h-[500px] para pantay-pantay ang cards
     <div className="relative w-full h-[500px] rounded-xl overflow-hidden shadow-xl group border border-gray-200">
       
-      {/* BACKGROUND IMAGE (Full Card Coverage) */}
+      {/* BACKGROUND IMAGE */}
       <img
         src={amenity.image}
         alt={amenity.name}
@@ -26,10 +25,10 @@ const AmenitiesCard = ({ amenity, onBook }) => {
         onError={handleImageError}
       />
 
-      {/* GRADIENT OVERLAY (Para mabasa ang text) */}
+      {/* GRADIENT OVERLAY */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent opacity-90" />
 
-      {/* TOP BADGES (Status & Type) */}
+      {/* TOP BADGES */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
         <span className="bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-white/20">
           {amenity.type}
@@ -44,13 +43,11 @@ const AmenitiesCard = ({ amenity, onBook }) => {
         </div>
       </div>
 
-      {/* CONTENT OVERLAY (Bottom Section) */}
+      {/* CONTENT OVERLAY */}
       <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10 flex flex-col justify-end h-full">
         
-        {/* Spacer to push content down */}
         <div className="flex-grow"></div>
 
-        {/* Amenity Details with Hover Effect */}
         <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
             <h3 className="text-2xl font-bold mb-2 leading-tight text-white drop-shadow-md">
               {amenity.name}
@@ -69,7 +66,12 @@ const AmenitiesCard = ({ amenity, onBook }) => {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <span>Up to {amenity.capacity} pax</span>
+                {/* Display remaining slots if available */}
+                <span>
+                    {amenity.slots_left !== undefined 
+                        ? `${amenity.slots_left} unit(s) left` 
+                        : `Up to ${amenity.capacity} pax`}
+                </span>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-orange-400 drop-shadow-sm">
@@ -78,7 +80,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
               </div>
             </div>
             
-            {/* BUTTON ACTION (Uses onBook function) */}
+            {/* BUTTON ACTION */}
             <button 
               onClick={() => onBook(amenity)}
               disabled={!isAvailable}
@@ -94,7 +96,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   </>
               ) : (
-                  'Unavailable'
+                  'Unavailable / Full'
               )}
             </button>
         </div>

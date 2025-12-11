@@ -23,29 +23,71 @@ const ToastNotification = ({ message, type, onClose }) => {
 };
 
 const WalkInBooking = () => {
-  // --- STATE FOR CREATION ONLY ---
   const [amenities, setAmenities] = useState([]);
   const [loading, setLoading] = useState(false); 
-  const [formData, setFormData] = useState({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '', numGuest: '' }); // Ensure numGuest is initialized
+  const [formData, setFormData] = useState({ fullName: '', contactNumber: '', address: '', checkInDate: '', checkOutDate: '', numGuest: '' }); 
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   
-  // Toasts & Success Modals
   const [toast, setToast] = useState(null); 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [transactionRef, setTransactionRef] = useState('');
   const [dateError, setDateError] = useState('');
 
-  // TRIGGER FOR TABLE REFRESH
   const [tableRefreshTrigger, setTableRefreshTrigger] = useState(0);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
-  const fetchAmenities = async () => { try { const res = await api.get('/api/amenities'); setAmenities(Array.isArray(res.data) ? res.data : (res.data.amenities || [])); } catch (e) { console.error(e); } };
+  // ------------------------------------------------------------------
+  // ✅ UPDATED: HYBRID FETCH LOGIC (Catalog vs Availability)
+  // ------------------------------------------------------------------
+  const fetchAmenities = async () => { 
+      try { 
+        let url = '/api/amenities'; // DEFAULT: Kunin lahat kung wala pang date
+        const params = {};
+
+        // KAPAG MAY DATE NA: Switch to Availability Check
+        if (formData.checkInDate) {
+            url = '/api/transactions/check-availability';
+            params.checkIn = formData.checkInDate;
+
+            // Logic para sa Instant Check (Date Range)
+            if (formData.checkOutDate) {
+                params.checkOut = formData.checkOutDate;
+            } else {
+                // +1 Minute trick para sa instant validation
+                const startDate = new Date(formData.checkInDate);
+                startDate.setMinutes(startDate.getMinutes() + 1);
+
+                const year = startDate.getFullYear();
+                const month = String(startDate.getMonth() + 1).padStart(2, '0');
+                const day = String(startDate.getDate()).padStart(2, '0');
+                const hours = String(startDate.getHours()).padStart(2, '0');
+                const minutes = String(startDate.getMinutes()).padStart(2, '0');
+                
+                const formattedCheckOut = `${year}-${month}-${day}T${hours}:${minutes}`;
+                params.checkOut = formattedCheckOut;
+            }
+        }
+
+        console.log("🔍 Fetching from:", url, params); // Debugger
+
+        const res = await api.get(url, { params }); 
+        
+        if (res.data.success) {
+            setAmenities(Array.isArray(res.data.data) ? res.data.data : []);
+        }
+      } catch (e) { 
+          console.error("Failed to fetch amenities:", e); 
+      } 
+  };
   
-  useEffect(() => { fetchAmenities(); }, []);
+  // ✅ Trigger on Mount (Empty Date) AND when Dates Change
+  useEffect(() => { 
+      fetchAmenities(); 
+  }, [formData.checkInDate, formData.checkOutDate]);
 
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate) {
@@ -61,11 +103,10 @@ const WalkInBooking = () => {
     try {
       const fd = new FormData();
       
-      // 👇 IMPORTANT FIX: Explicit mapping for DB compatibility
       fd.append('num_guest', formData.numGuest || 0); 
       
       Object.keys(formData).forEach(k => {
-          if (k !== 'numGuest') fd.append(k, formData[k]); // Skip duplicate numGuest
+          if (k !== 'numGuest') fd.append(k, formData[k]); 
       });
 
       fd.append('booking_type', 'Walk-in'); fd.append('bookingStatus', 'Confirmed'); fd.append('paymentStatus', 'Fully Paid');
@@ -82,7 +123,9 @@ const WalkInBooking = () => {
       }
     } catch (error) {
       console.error(error);
-      showToast("Failed to create booking.", 'error'); } 
+      const msg = error.response?.data?.message || "Failed to create booking.";
+      showToast(msg, 'error'); 
+    } 
     finally { setLoading(false); }
   };
 
@@ -97,7 +140,6 @@ const WalkInBooking = () => {
     <div className="space-y-6 max-w-9xl mx-auto pb-12 relative">
         {toast && <ToastNotification message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         
-        {/* MODALS */}
         <WalkInModals 
             showConfirmModal={showConfirmModal} setShowConfirmModal={setShowConfirmModal} formData={formData} cart={cart} total={calculateTotal()} handleFinalConfirm={handleFinalConfirm} loading={loading}
             showSuccess={showSuccess} setShowSuccess={setShowSuccess} transactionRef={transactionRef} handleCloseSuccess={handleCloseSuccess}
@@ -108,35 +150,27 @@ const WalkInBooking = () => {
           <div><h1 className="text-2xl font-bold text-gray-900">Walk-in Booking</h1><p className="text-sm text-gray-500">Create instant bookings.</p></div>
         </div>
         
-        {/* NEW LAYOUT ARRANGEMENT */}
         <div className="flex flex-col gap-6">
-            
-            {/* ROW 1: Form (Cust Details Left | Schedule Right) */}
             <WalkInForm formData={formData} setFormData={setFormData} dateError={dateError} />
 
-            {/* ROW 2: Amenities (Left/Top) | Cart (Right/Bottom) */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                
-                {/* AMENITIES (Main Section)
-                    - Mobile (grid-cols-1): This appears FIRST because it's first in code.
-                    - Desktop (xl:grid-cols-3): This takes 2 columns on the LEFT.
-                */}
                 <div className="xl:col-span-2">
                     <WalkInAmenities amenities={amenities} cart={cart} setCart={setCart} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
                 </div>
-
-                {/* CART (Summary Section)
-                    - Mobile (grid-cols-1): This appears SECOND/BELOW because it's second in code.
-                    - Desktop (xl:grid-cols-3): This takes 1 column on the RIGHT.
-                */}
                 <div className="xl:col-span-1">
-                    <WalkInCart cart={cart} setCart={setCart} total={calculateTotal()} dateError={dateError} setShowConfirmModal={setShowConfirmModal} formData={formData} />
+                    <WalkInCart 
+                        cart={cart} 
+                        setCart={setCart} 
+                        total={calculateTotal()} 
+                        dateError={dateError} 
+                        setShowConfirmModal={setShowConfirmModal} 
+                        formData={formData}
+                        amenities={amenities} 
+                    />
                 </div>
-
             </div>
         </div>
         
-        {/* TABLE (Unchanged position) */}
         <div className="pt-4">
             <WalkInTable refreshTrigger={tableRefreshTrigger} />
         </div>
