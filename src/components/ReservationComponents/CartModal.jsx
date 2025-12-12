@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 const CartModal = ({
   isOpen,
@@ -10,24 +10,37 @@ const CartModal = ({
   calculateDownpayment,
   setCart
 }) => {
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col relative z-[101]">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
           <h3 className="text-lg font-bold text-gray-900">Your Booking Cart</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+            className="text-gray-400 hover:text-gray-600 text-xl font-bold p-1"
           >
             ×
           </button>
         </div>
 
         {/* Scrollable Amenities Section */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           {cart.length === 0 ? (
             <p className="text-gray-500 text-center py-4">Your cart is empty</p>
           ) : (
@@ -35,7 +48,7 @@ const CartModal = ({
               {cart.map((item, index) => (
                 <div
                   key={item.id}
-                  className="border border-gray-200 rounded-lg p-3"
+                  className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex gap-3">
                     {/* Small Image */}
@@ -43,7 +56,7 @@ const CartModal = ({
                       <img 
                         src={item.image} 
                         alt={item.amenity_name}
-                        className="w-16 h-16 object-cover rounded-md"
+                        className="w-16 h-16 object-cover rounded-md bg-gray-100"
                         onError={(e) => {
                           e.target.src = "/images/default-amenity.jpg";
                         }}
@@ -105,7 +118,7 @@ const CartModal = ({
                                   return newCart;
                                 });
                               }}
-                              className="w-6 h-6 bg-gray-200 rounded flex items-center justify-center hover:bg-gray-300 transition-colors text-xs"
+                              className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center hover:bg-gray-200 transition-colors text-xs font-bold text-gray-600"
                             >
                               -
                             </button>
@@ -122,7 +135,7 @@ const CartModal = ({
                                   return newCart;
                                 });
                               }}
-                              className="w-6 h-6 bg-gray-200 rounded flex items-center justify-center hover:bg-gray-300 transition-colors text-xs"
+                              className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center hover:bg-gray-200 transition-colors text-xs font-bold text-gray-600"
                             >
                               +
                             </button>
@@ -145,7 +158,7 @@ const CartModal = ({
 
         {/* Fixed Footer */}
         {cart.length > 0 ? (
-          <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+          <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0 rounded-b-lg">
             <div className="space-y-3">
               <div className="flex justify-between text-base">
                 <span className="font-semibold">Total Amount:</span>
@@ -153,7 +166,7 @@ const CartModal = ({
                   ₱{calculateTotal().toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between text-xs text-gray-600 bg-orange-50 p-2 rounded">
+              <div className="flex justify-between text-xs text-gray-600 bg-orange-50 p-2 rounded border border-orange-100">
                 <span>20% Downpayment Required:</span>
                 <span className="font-semibold text-orange-600">
                   ₱{calculateDownpayment().toLocaleString()}
@@ -161,17 +174,17 @@ const CartModal = ({
               </div>
               <button
                 onClick={onClose}
-                className="w-full py-3 bg-lp-orange text-white rounded-lg font-semibold hover:bg-lp-orange-hover transition-colors text-sm"
+                className="w-full py-3 bg-lp-orange text-white rounded-lg font-semibold hover:bg-lp-orange-hover transition-colors text-sm shadow-md"
               >
                 Close Cart
               </button>
             </div>
           </div>
         ) : (
-          <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+          <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0 rounded-b-lg">
             <button
               onClick={onClose}
-              className="w-full py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 text-sm"
+              className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-sm"
             >
               Close
             </button>

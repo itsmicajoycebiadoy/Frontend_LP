@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../config/axios';
 import { CheckCircle, AlertCircle, X } from 'lucide-react';
-
-// Components
 import WalkInModals from '../../components/WalkinBookingComponents/WalkInModal.jsx';
 import WalkInForm from '../../components/WalkinBookingComponents/WalkInForm.jsx';
 import WalkInCart from '../../components/WalkinBookingComponents/WalkInCart.jsx';
@@ -29,35 +27,25 @@ const WalkInBooking = () => {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
   const [toast, setToast] = useState(null); 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [transactionRef, setTransactionRef] = useState('');
   const [dateError, setDateError] = useState('');
-
   const [tableRefreshTrigger, setTableRefreshTrigger] = useState(0);
-
   const showToast = (message, type = 'success') => setToast({ message, type });
-
-  // ------------------------------------------------------------------
-  // ✅ UPDATED: HYBRID FETCH LOGIC (Catalog vs Availability)
-  // ------------------------------------------------------------------
   const fetchAmenities = async () => { 
       try { 
-        let url = '/api/amenities'; // DEFAULT: Kunin lahat kung wala pang date
+        let url = '/api/amenities';
         const params = {};
 
-        // KAPAG MAY DATE NA: Switch to Availability Check
         if (formData.checkInDate) {
             url = '/api/transactions/check-availability';
             params.checkIn = formData.checkInDate;
 
-            // Logic para sa Instant Check (Date Range)
             if (formData.checkOutDate) {
                 params.checkOut = formData.checkOutDate;
             } else {
-                // +1 Minute trick para sa instant validation
                 const startDate = new Date(formData.checkInDate);
                 startDate.setMinutes(startDate.getMinutes() + 1);
 
@@ -72,7 +60,7 @@ const WalkInBooking = () => {
             }
         }
 
-        console.log("🔍 Fetching from:", url, params); // Debugger
+        console.log("🔍 Fetching from:", url, params);
 
         const res = await api.get(url, { params }); 
         
@@ -84,7 +72,7 @@ const WalkInBooking = () => {
       } 
   };
   
-  // ✅ Trigger on Mount (Empty Date) AND when Dates Change
+
   useEffect(() => { 
       fetchAmenities(); 
   }, [formData.checkInDate, formData.checkOutDate]);

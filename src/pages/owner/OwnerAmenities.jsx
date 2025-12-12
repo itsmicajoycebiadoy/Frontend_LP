@@ -6,20 +6,12 @@ import { Plus, Edit, Trash2, X, Save, UploadCloud, Filter, Layers, AlertTriangle
 const OwnerAmenities = ({ amenities, fetchAmenities }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null); 
-    
-    // --- LOADING STATE ---
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
-
-    // --- FILTER STATE ---
     const [selectedCategory, setSelectedCategory] = useState('All');
-
-    // --- DELETE MODAL STATE ---
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
-
     const [form, setForm] = useState({
         name: '', 
         description: '', 
@@ -31,7 +23,6 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         available: true,
     });
 
-    // --- UPDATED CATEGORIES: Removed 'Cabin' and 'Room' ---
     const categories = ['All', 'Kubo', 'Table', 'Others'];
 
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -53,7 +44,7 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         setPreviewUrl(null);
         setEditingId(null);
         setIsAdding(false);
-        setIsSubmitting(false); // Reset loading state
+        setIsSubmitting(false);
     };
 
     const handleFileChange = (e) => {
@@ -81,18 +72,13 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
         setSelectedFile(null);
     };
 
-    // --- SAVE FUNCTION ---
     const handleSave = async (id = null) => {
-        // Validation
         if(!form.name || !form.price) {
             alert("Please fill in Name and Price.");
             return;
         }
 
-        // Prevent double submission
         if (isSubmitting) return;
-
-        // 1. Start Loading
         setIsSubmitting(true);
 
         try {
@@ -128,7 +114,6 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
             console.error(error);
             alert('Error saving amenity: ' + (error.response?.data?.message || error.message || 'Server did not respond.'));
         } finally {
-            // 2. Stop Loading
             setIsSubmitting(false);
         }
     };
@@ -180,7 +165,6 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
 
     const renderFormFields = () => (
         <div className="space-y-3">
-            {/* Image Upload */}
             <div className="relative h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center group hover:border-lp-orange transition-colors cursor-pointer">
                 {previewUrl ? (
                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -274,10 +258,9 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                 <div className="p-4 md:p-6 border-t bg-gray-50 flex items-center gap-3">
                     <button onClick={resetForm} disabled={isSubmitting} className="flex-1 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-100 text-gray-600 font-medium transition-colors disabled:opacity-50">Cancel</button>
                     
-                    {/* --- BUTTON SA MODAL NA MAY LOADING STATE --- */}
                     <button 
                         onClick={() => handleSave()} 
-                        disabled={isSubmitting} // DISABLE KAPAG NAGLOLOLD
+                        disabled={isSubmitting}
                         className={`flex-[2] bg-lp-orange text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-medium shadow-md transition-all 
                         ${isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-orange-600 hover:shadow-lg'}`}
                     >
@@ -344,8 +327,7 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                        
                        return (
                      <div key={amenity.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${editingId === amenity.id ? 'ring-2 ring-lp-orange ring-offset-2 scale-[1.02] z-10' : ''}`}>
-                         
-                         {/* --- EDIT MODE (Inline) --- */}
+                        
                          {editingId === amenity.id ? (
                              <div className="p-5 flex flex-col h-full bg-white">
                                  <div className="flex justify-between items-center mb-4 pb-2">
@@ -356,10 +338,9 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                                  <div className="mt-5 flex gap-3">
                                      <button onClick={resetForm} disabled={isSubmitting} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 text-sm font-medium disabled:opacity-50">Cancel</button>
                                      
-                                     {/* --- BUTTON SA INLINE EDIT NA MAY LOADING STATE --- */}
                                      <button 
                                         onClick={() => handleSave(amenity.id)} 
-                                        disabled={isSubmitting} // DISABLE DITO
+                                        disabled={isSubmitting} 
                                         className={`flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow-md flex items-center justify-center gap-2
                                         ${isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-green-700'}`}
                                      >
@@ -372,7 +353,7 @@ const OwnerAmenities = ({ amenities, fetchAmenities }) => {
                                  </div>
                              </div>
                          ) : (
-                             // --- VIEW MODE ---
+
                              <>
                                  <div className="relative h-56 group cursor-pointer" onClick={() => startEditing(amenity)}>
                                      <img 

@@ -8,30 +8,26 @@ import api from "../../config/axios.js";
 const Feedback = () => {
   const { user } = useAuth();
   const backgroundImageUrl = "/images/bg.jpg"; 
-
-  // --- STATE MANAGEMENT ---
   const [reviews, setReviews] = useState([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [activeFilter, setActiveFilter] = useState('recent');
   const [filteredReviews, setFilteredReviews] = useState([]);
-
-  // --- ELIGIBILITY STATE ---
   const [eligibility, setEligibility] = useState({
     canReview: false,
     message: "Checking eligibility...",
     bookingId: null
   });
 
-  // Form State
+
   const [formData, setFormData] = useState({ 
     name: user?.name || '', 
     ratings: { service: 0, cleanliness: 0, amenities: 0 }, 
     comment: '' 
   });
 
-  // --- 1. FETCH REVIEWS (Public) ---
+
   const fetchReviews = async () => {
     try {
       setIsLoading(true);
@@ -62,7 +58,6 @@ const Feedback = () => {
     }
   };
 
-  // --- 2. CHECK ELIGIBILITY (Private) ---
   const checkEligibility = async () => {
     if (!user || !user.id) {
         setEligibility({ canReview: false, message: "Please login to leave a review.", bookingId: null });
@@ -70,12 +65,10 @@ const Feedback = () => {
     }
 
     try {
-        // FIX: Changed from '/api/bookings' to '/api/reservations' based on your controller file
         const res = await api.get(`/api/reservations/user/${user.id}`); 
         
-        console.log("User Reservations:", res.data); // Debugging check
+        console.log("User Reservations:", res.data); 
 
-        // Handle different data structures (res.data vs res.data.data)
         let bookingsList = [];
         if (Array.isArray(res.data)) {
             bookingsList = res.data;
@@ -87,28 +80,23 @@ const Feedback = () => {
 
         if (bookingsList.length > 0) {
             
-            // LOGIC: Find a booking that is "Checked-In" AND has no feedback yet
             const validBooking = bookingsList.find(booking => {
                 const status = booking.status ? booking.status.toLowerCase() : '';
                 
-                // Allow 'Checked-In' or 'Completed'
                 const isStatusValid = status === 'checked-in' || status === 'completed';
                 
-                // Check if feedback already exists (assuming 0 or null means no feedback)
                 const noFeedback = !booking.has_feedback || booking.has_feedback == 0;
 
                 return isStatusValid && noFeedback;
             });
             
             if (validBooking) {
-                // SUCCESS: User can review
                 setEligibility({ 
                     canReview: true, 
                     message: "", 
                     bookingId: validBooking.id 
                 });
             } else {
-                // FAIL: User has bookings, but none are checked-in/completed or all have reviews
                 const hasPending = bookingsList.some(b => b.status?.toLowerCase() === 'pending' || b.status?.toLowerCase() === 'confirmed');
                 
                 if (hasPending) {
@@ -130,7 +118,6 @@ const Feedback = () => {
         }
     } catch (error) {
         console.error("Eligibility check error:", error);
-        // Fallback message
         setEligibility({ canReview: false, message: "Unable to verify booking status.", bookingId: null });
     }
   };
@@ -142,7 +129,6 @@ const Feedback = () => {
     }
   }, [user]);
 
-  // Apply filter logic
   useEffect(() => {
     let filtered = [...reviews];
     switch (activeFilter) {
@@ -154,7 +140,6 @@ const Feedback = () => {
     setFilteredReviews(filtered.slice(0, 6));
   }, [activeFilter, reviews]);
 
-  // Helpers
   const getCurrentFormAverage = () => {
     const values = Object.values(formData.ratings);
     const total = values.reduce((acc, curr) => acc + curr, 0);
@@ -217,7 +202,6 @@ const Feedback = () => {
         }
         setFormData({ name: user?.name || '', ratings: { service: 0, cleanliness: 0, amenities: 0 }, comment: '' });
         
-        // Lock form immediately after success
         setEligibility({ canReview: false, message: "Thank you for your feedback!", bookingId: null });
         
         setShowSuccess(true);
@@ -250,7 +234,7 @@ const Feedback = () => {
       </section>
 
       <div className="flex-grow w-full px-4 sm:px-6 py-8 lg:py-12">
-        {/* MOBILE ANALYTICS (Preserved) */}
+        {/* MOBILE ANALYTICS*/}
         <div className="lg:hidden mb-8">
           <div className="bg-white p-6 shadow-sm border border-gray-200">
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><BarChart3 size={24} className="text-[#ea580c]" />Guest Ratings</h3>

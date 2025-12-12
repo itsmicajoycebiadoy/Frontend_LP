@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../config/axios"; // ✅ Gamit na ang inyong axios config
+import api from "../../config/axios";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../AuthContext";
 
@@ -17,13 +17,10 @@ import ContactSection from "../../components/customerdashboardcomponents/Contact
 import MapSection from "../../components/customerdashboardcomponents/MapSection";
 import ReviewModal from "../../components/customerdashboardcomponents/ReviewModal";
 
-// Backend URL para sa images (kung kailangan ng child components)
 const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const CustomerDashboard = () => {
     const { user, logout } = useAuth();
-
-    // State
     const [reviews, setReviews] = useState([]);
     const [featuredAmenities, setFeaturedAmenities] = useState([]);
     const [isLoadingReviews, setIsLoadingReviews] = useState(true);
@@ -32,22 +29,19 @@ const CustomerDashboard = () => {
     const [showFeedbackSuccess, setShowFeedbackSuccess] = useState(false);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-    // Fetch Data
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setIsLoadingReviews(true);
                 setIsLoadingData(true);
 
-                // Fetch Featured Amenities
                 try {
-                    // ✅ api.get na lang, wala nang ${API_URL}
                     const response = await api.get('/api/amenities/featured');
                     if (response.data && response.data.length > 0) {
                         setFeaturedAmenities(response.data);
                     } else { throw new Error("No data"); }
                 } catch (err) {
-                    // Fallback
+
                     setFeaturedAmenities([
                         { id: 1, name: "Refreshing Pool", description: "Dive into relaxation.", image: "pool.png" },
                         { id: 2, name: "Grand Event Hall", description: "Perfect venue for celebrations.", image: "eventhall.png" },
@@ -55,9 +49,8 @@ const CustomerDashboard = () => {
                     ]);
                 }
 
-                // Fetch Reviews
                 try {
-                    // ✅ api.get na lang
+
                     const reviewsRes = await api.get('/api/feedbacks');
                     const formattedReviews = reviewsRes.data.map(review => ({
                         id: review.id,
@@ -82,11 +75,9 @@ const CustomerDashboard = () => {
         fetchData();
     }, []);
 
-    // Review Submit
     const handleReviewSubmit = async (payload) => {
         setIsSubmitting(true);
         try {
-            // ✅ api.post na lang
             const response = await api.post('/api/feedbacks', payload);
             if (response.data.success) {
                 if (payload.rating >= 4) {
@@ -124,7 +115,7 @@ const CustomerDashboard = () => {
                 <FeaturedAmenities 
                     isLoading={isLoadingData} 
                     amenities={featuredAmenities} 
-                    apiUrl={backendUrl} // ✅ Pass backendUrl for images
+                    apiUrl={backendUrl} 
                 />
                 <GallerySection apiUrl={backendUrl} />
                 <FeedbackSection 

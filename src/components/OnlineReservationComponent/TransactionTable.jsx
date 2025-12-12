@@ -85,7 +85,7 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
     if (!selectedTransaction) return;
     setProcessLoading(true);
     try {
-      // NOTE: extensionData.newCheckoutDate is already formatted from Modal
+  
       await api.put(`/api/reservations/${selectedTransaction.reservations[0].id}/extend`, {
         new_check_out_date: extensionData.newCheckoutDate, 
         additional_cost: extensionData.additionalAmount, additional_hours: extensionData.extensionValue, extension_type: 'Hourly', extended_items: extensionData.extended_items
@@ -100,7 +100,6 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
   const openExtendModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, extend: true })); };
   const openProofModal = (t) => { setSelectedTransaction(t); setModals(prev => ({ ...prev, proof: true })); };
   
-  // ✅ Updated to support passing detailType
   const openDetailModal = (t, type) => { setSelectedTransaction(t); setDetailType(type); setModals(prev => ({ ...prev, detail: true })); };
   
   const openActionModal = (type, t) => { setSelectedTransaction(t); setActionType(type); setModals(prev => ({ ...prev, action: true })); };
@@ -173,7 +172,6 @@ const TransactionTable = ({ searchQuery = '', viewMode = 'active', statusFilter 
                       <td className="px-4 py-4">{(t.extensions || []).length > 0 ? <div className="flex flex-col items-start"><span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">{t.extensions.length} added</span><button onClick={() => openDetailModal(t, 'extensions')} className="text-[11px] text-purple-500 hover:text-purple-700 flex items-center gap-1 mt-1 font-semibold" type="button"><Plus size={10} /> See breakdown</button></div> : <span className="text-gray-300 text-xs">-</span>}</td>
                       <td className="px-4 py-4 text-center"><div className="flex flex-col items-center text-xs"><span className="text-gray-500">{inDT.date} <b className="text-green-700">{inDT.time}</b></span><span className="text-gray-300 my-0.5">↓</span><span className="text-gray-500">{outDT.date} <b className="text-orange-700">{outDT.time}</b></span></div></td>
                       
-                      {/* ✅ PAYMENT COLUMN MODIFIED TO INCLUDE "View Breakdown" BUTTON */}
                       <td className="px-4 py-4 text-center align-middle">
                           <div className="flex flex-col items-center justify-center">
                               <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border mb-1 ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>

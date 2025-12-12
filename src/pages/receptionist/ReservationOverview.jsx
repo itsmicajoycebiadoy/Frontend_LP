@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../../config/axios';
 import { Clock, CheckCircle, XCircle, Calendar, Users, LogIn, LogOut, AlertCircle, Globe, Briefcase, Loader2 } from 'lucide-react';
 
-// Helpers (nasa labas para hindi mag-recreate kada render)
 const getStatusColor = (status) => {
   const statusLower = status?.toLowerCase() || '';
   switch (statusLower) {
@@ -35,18 +34,14 @@ const getBookingTypeBadge = (type) => {
 const ReservationOverview = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // --- FETCH DATA (Stable Function) ---
   const fetchTransactions = useCallback(async (isBackground = false) => {
-    // Kung hindi background refresh, mag-loading state (initial load)
+
     if (!isBackground) setLoading(true);
 
     try {
-      // Siguraduhin na '/api/transactions' ang tamang route mo base sa server.js
+
       const res = await api.get('/api/transactions');
       
-      // FIX: Check kung nasaan ang array. 
-      // Minsan nasa res.data lang, minsan nasa res.data.data, o res.data.transactions
       const validData = Array.isArray(res.data) 
         ? res.data 
         : (res.data.data || res.data.transactions || []);
@@ -56,31 +51,27 @@ const ReservationOverview = () => {
     } catch (error) {
       console.error("Error fetching transactions:", error);
     } finally {
-      // Tapusin ang loading state
+
       if (!isBackground) setLoading(false);
     }
   }, []);
 
-  // --- AUTO REFRESH (3 Seconds) ---
   useEffect(() => {
-    // 1. Initial Load
+
     fetchTransactions(false);
 
-    // 2. Interval for Silent Refresh
     const intervalId = setInterval(() => {
       fetchTransactions(true);
     }, 3000);
 
-    // 3. Cleanup function
+
     return () => clearInterval(intervalId);
   }, [fetchTransactions]);
 
-  // --- STATS CALCULATION (Memoized) ---
+
   const { stats, recentTransactions } = useMemo(() => {
     const todayDate = new Date().toDateString();
     const isToday = (dateString) => new Date(dateString).toDateString() === todayDate;
-
-    // Default values
     const defaultStats = {
       checkInsToday: 0, checkOutsToday: 0, pendingCount: 0,
       confirmedToday: 0, rejectedToday: 0, newBookingsCount: 0,
@@ -91,7 +82,6 @@ const ReservationOverview = () => {
       return { stats: defaultStats, recentTransactions: [] };
     }
 
-    // 1. Calculations
     const checkInsToday = transactions.filter(t =>
       t.reservations?.some(r => new Date(r.check_in_date).toDateString() === todayDate && t.booking_status !== 'Cancelled')
     ).length;
@@ -103,13 +93,10 @@ const ReservationOverview = () => {
     const pendingCount = transactions.filter(t => t.booking_status === 'Pending').length;
     const confirmedToday = transactions.filter(t => isToday(t.created_at) && t.booking_status === 'Confirmed').length;
     const rejectedToday = transactions.filter(t => isToday(t.created_at) && t.booking_status === 'Cancelled').length;
-
     const newBookingsTodayList = transactions.filter(t => isToday(t.created_at));
     const newBookingsCount = newBookingsTodayList.length;
     const onlineCountToday = newBookingsTodayList.filter(t => t.booking_type !== 'Walk-in').length;
     const walkInCountToday = newBookingsTodayList.filter(t => t.booking_type === 'Walk-in').length;
-
-    // 2. Recent List
     const recent = transactions
       .filter(t => isToday(t.created_at) || t.booking_status === 'Pending')
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -212,7 +199,6 @@ const ReservationOverview = () => {
           </div>
         </div>
         
-        {/* New Bookings (TODAY ONLY) */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition">
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -233,8 +219,7 @@ const ReservationOverview = () => {
              </span>
           </div>
         </div>
-        
-        {/* Total Reservations (TODAY ONLY) */}
+
         <div className="col-span-1 sm:col-span-2 lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition">
           <div className="flex items-center justify-between h-full">
             <div>

@@ -10,24 +10,26 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fade, setFade] = useState(false);
+  
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
+
   const [errors, setErrors] = useState({
     email: "",
+    passwordStrength: "", 
     passwordMatch: "",
   });
+
   const [isLoading, setIsLoading] = useState(false);
-  // Add state for logout confirmation modal
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const navigate = useNavigate();
   const { login, logout } = useAuth();
 
-  // Handle logout with confirmation
   const handleLogoutWithConfirmation = () => {
     setShowLogoutConfirm(true);
   };
@@ -46,26 +48,33 @@ const Auth = () => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
 
+
     if (name === "email") {
-      if (!value.includes("@") || !value.endsWith(".com")) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
         setErrors((prev) => ({ ...prev, email: "Invalid email format" }));
       } else {
         setErrors((prev) => ({ ...prev, email: "" }));
       }
     }
 
+    if (!isLogin && name === "password") {
+       const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+       if (!strongPasswordRegex.test(value)) {
+          setErrors((prev) => ({ 
+            ...prev, 
+            passwordStrength: "Must have 8+ chars, 1 uppercase, 1 lowercase, & 1 number." 
+          }));
+       } else {
+          setErrors((prev) => ({ ...prev, passwordStrength: "" }));
+       }
+    }
+
     if (!isLogin && (name === "password" || name === "confirmPassword")) {
-      if (
-        name === "password" &&
-        form.confirmPassword &&
-        value !== form.confirmPassword
-      ) {
-        setErrors((prev) => ({ ...prev, passwordMatch: "Passwords do not match" }));
-      } else if (
-        name === "confirmPassword" &&
-        form.password &&
-        value !== form.password
-      ) {
+      const passwordToCheck = name === "password" ? value : form.password;
+      const confirmToCheck = name === "confirmPassword" ? value : form.confirmPassword;
+
+      if (confirmToCheck && passwordToCheck !== confirmToCheck) {
         setErrors((prev) => ({ ...prev, passwordMatch: "Passwords do not match" }));
       } else {
         setErrors((prev) => ({ ...prev, passwordMatch: "" }));
@@ -77,9 +86,8 @@ const Auth = () => {
     e.preventDefault();
     if (isLoading) return;
 
-    // Validation
-    if (errors.email || (!isLogin && errors.passwordMatch)) {
-      alert("Please fix the errors before continuing.");
+    if (errors.email || (!isLogin && (errors.passwordMatch || errors.passwordStrength))) {
+      alert("Please fix the errors shown in red before continuing.");
       return;
     }
 
@@ -88,8 +96,6 @@ const Auth = () => {
     try {
       if (isLogin) {
         console.log('🚀 Step 1: Sending Login Request...');
-        
-        // DIRECT CALL sa tamang endpoint. Wala nang try-catch loop.
         const response = await api.post("/api/auth/login", {
           email: form.email,
           password: form.password,
@@ -97,23 +103,19 @@ const Auth = () => {
 
         console.log('📥 Step 2: Server Response:', response.data);
 
-        // Check success
         if (response.data.user && response.data.token) {
           const userData = response.data.user;
           const token = response.data.token;
           
           console.log('🔑 Step 3: Token Found:', token);
 
-          // 1. Save to LocalStorage manually (Backup)
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(userData));
 
-          // 2. Pass to Context
           await login(userData, token);
           
           console.log('✅ Step 4: Login Complete. Redirecting...');
           
-          // Navigation Logic
           if (userData.role === "customer") navigate("/customer");
           else if (userData.role === "receptionist") navigate("/receptionist");
           else if (userData.role === "owner") navigate("/owner");
@@ -125,7 +127,6 @@ const Auth = () => {
         }
 
       } else {
-        // SIGNUP LOGIC (Retained)
         if (form.password !== form.confirmPassword) {
           alert("Passwords do not match");
           setIsLoading(false);
@@ -147,7 +148,7 @@ const Auth = () => {
         }
       }
     } catch (err) {
-      console.error('💥 Auth Error:', err);
+      console.error('Auth Error:', err);
       const msg = err.response?.data?.message || "Connection failed. Check server.";
       alert(msg);
     } finally {
@@ -177,7 +178,7 @@ const Auth = () => {
         setIsForgotPassword(false);
         setIsLogin(true);
         setForm({ username: "", email: "", password: "", confirmPassword: "" });
-        setErrors({ email: "", passwordMatch: "" });
+        setErrors({ email: "", passwordMatch: "", passwordStrength: "" });
         setFade(false);
       }, 250);
     } catch {
@@ -187,7 +188,7 @@ const Auth = () => {
         setIsForgotPassword(false);
         setIsLogin(true);
         setForm({ username: "", email: "", password: "", confirmPassword: "" });
-        setErrors({ email: "", passwordMatch: "" });
+        setErrors({ email: "", passwordMatch: "", passwordStrength: "" });
         setFade(false);
       }, 250);
     } finally {
@@ -203,7 +204,7 @@ const Auth = () => {
       setForm({ username: "", email: "", password: "", confirmPassword: "" });
       setShowPassword(false);
       setShowConfirmPassword(false);
-      setErrors({ email: "", passwordMatch: "" });
+      setErrors({ email: "", passwordMatch: "", passwordStrength: "" });
       setFade(false);
     }, 250);
   };
@@ -214,7 +215,7 @@ const Auth = () => {
       setIsForgotPassword(!isForgotPassword);
       setIsLogin(true); 
       setForm({ username: "", email: "", password: "", confirmPassword: "" });
-      setErrors({ email: "", passwordMatch: "" });
+      setErrors({ email: "", passwordMatch: "", passwordStrength: "" });
       setFade(false);
     }, 250);
   };
@@ -242,6 +243,11 @@ const Auth = () => {
           {isForgotPassword ? (
             <>
               <div className="text-center mb-6">
+                <img 
+                    src="/images/Lp.png" 
+                    alt="La Piscina Logo" 
+                    className="h-24 w-auto mx-auto mb-4 object-contain"
+                />
                 <h1 className="text-xl md:text-2xl font-bold">Reset Password</h1>
                 <p className="text-xs md:text-sm text-gray-600 mt-1">
                   Enter your email to receive a reset link.
@@ -257,7 +263,7 @@ const Auth = () => {
                 required
               />
               {errors.email && (
-                <p className="text-red-500 text-xs md:text-sm mt-1 mb-2">{errors.email}</p>
+                <p className="text-red-500 text-xs mt-1 mb-2">{errors.email}</p>
               )}
               
               <button
@@ -286,9 +292,14 @@ const Auth = () => {
           ) : (
             <>
               <div className="text-center mb-6">
+                <img 
+                    src="/images/Lp.png" 
+                    alt="La Piscina Logo" 
+                    className="h-24 w-auto mx-auto mb-4 object-contain"
+                />
                 <h1 className="text-xl md:text-2xl font-bold">{isLogin ? "Login" : "Sign Up"}</h1>
                 <p className="text-xs md:text-sm text-gray-600 mt-1">
-                  La Piscina - Integrated Resort Management System
+                  Welcome to La Piscina!
                 </p>
               </div>
 
@@ -357,9 +368,10 @@ const Auth = () => {
                       required
                     />
                     {errors.email && (
-                      <p className="text-red-500 text-xs md:text-sm mt-1">{errors.email}</p>
+                      <p className="text-red-500 text-xs mt-1 text-left">{errors.email}</p>
                     )}
                   </div>
+                  
                   <div className="relative mb-2">
                     <input
                       type={showPassword ? "text" : "password"}
@@ -379,6 +391,12 @@ const Auth = () => {
                       </span>
                     )}
                   </div>
+                  {errors.passwordStrength && (
+                      <p className="text-red-500 text-xs mt-1 mb-2 text-left break-words leading-tight">
+                        {errors.passwordStrength}
+                      </p>
+                  )}
+
                   <div className="relative mb-2">
                     <input
                       type={showConfirmPassword ? "text" : "password"}
@@ -400,7 +418,7 @@ const Auth = () => {
                   </div>
 
                   {errors.passwordMatch && (
-                    <p className="text-red-500 text-xs md:text-sm mt-1">
+                    <p className="text-red-500 text-xs mt-1 text-left">
                       {errors.passwordMatch}
                     </p>
                   )}
@@ -410,7 +428,7 @@ const Auth = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full p-2 mb-4 rounded bg-lp-orange text-white text-sm md:text-base ${
+                className={`w-full p-2 mt-2 mb-4 rounded bg-lp-orange text-white text-sm md:text-base ${
                   isLoading
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-lp-orange-hover"
@@ -441,7 +459,6 @@ const Auth = () => {
         </form>
       </div>
 
-      {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">

@@ -28,6 +28,10 @@ const Amenities = () => {
   const navigate = useNavigate();
   
   const backgroundImageUrl = "/images/bg.jpg";
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   const fetchAmenities = async () => {
     try {
@@ -141,11 +145,11 @@ const Amenities = () => {
     setFilters({ type: 'any', availability: 'any', capacity: 'any', priceRange: 'any' });
   };
 
-  // ✅ MODIFIED: Handle Book (Add to Cart logic inside Amenities)
+  // Handle Book (Add to Cart logic inside Amenities)
   const handleBookAmenity = (amenity) => {
     if (!amenity) return;
 
-    // 1. Determine Storage Key (Same logic as Reservations.js)
+    // 1. Determine Storage Key
     const userId = user?.id || user?._id || user?.userId;
     const storageKey = userId ? `cart_${userId}` : "cart_guest";
 
@@ -170,7 +174,7 @@ const Amenities = () => {
       return;
     }
 
-    // 4. Create New Cart Item (Format must match Reservations.js)
+    // 4. Create New Cart Item
     const newItem = {
       id: Date.now(),
       amenity_id: amenity.id,
@@ -206,7 +210,7 @@ const Amenities = () => {
         <Header user={user} />
       </div>
 
-      {/* ✅ NOTIFICATION TOAST */}
+      {/* NOTIFICATION TOAST */}
       {showNotification && addedItem && (
         <div className="fixed top-24 right-4 z-[60] animate-slide-in-right">
           <div className="bg-white rounded-lg shadow-2xl border border-lp-orange/20 overflow-hidden w-80 sm:w-96">
@@ -296,7 +300,6 @@ const Amenities = () => {
               <option value="any">All Types</option>
               <option value="Table">Table</option>
               <option value="Kubo">Kubo</option>
-              <option value="Cabin">Cabin</option>
               <option value="Others">Others</option>
             </select>
             <select className="w-full py-2 px-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-lp-orange focus:border-transparent text-gray-800 text-sm" value={filters.availability} onChange={(e) => handleFilterChange('availability', e.target.value)}>

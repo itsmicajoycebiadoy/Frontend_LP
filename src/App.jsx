@@ -7,23 +7,20 @@ import Reservations from "./pages/customer/Reservations";
 import Feedback from "./pages/customer/Feedback";
 import Contact from "./pages/customer/Contact";
 import Amenities from "./pages/customer/Amenities";
-
-// Dashboards
 import CustomerDashboard from "./pages/customer/CustomerDashboard"; 
 import ReceptionistDashboard from "./pages/receptionist/ReceptionistDashboard"; 
 import OwnerDashboard from "./pages/owner/OwnerDashboard"; 
-
 import FeedbackModal from "./components/FeedbackModal"; 
 
-// --- 1. GLOBAL WRAPPER (Ang Solusyon sa Modal Issue) ---
+
 const GlobalFeedbackWrapper = () => {
     const { user, loading } = useAuth();
     const location = useLocation();
 
-    // STRICT GUARD: Huwag ipakita sa Login o Reset Password page
+ 
     const isAuthPath = location.pathname === '/' || location.pathname === '/reset-password';
     
-    if (isAuthPath) return null; // 👈 HINDI LILITAW DITO
+    if (isAuthPath) return null; 
     if (loading) return null;
     if (!user) return null; 
 
@@ -66,7 +63,6 @@ function App() {
     return (
         <AuthProvider>
             <BrowserRouter>
-                {/* 🎯 DITO NAKALAGAY ANG WRAPPER */}
                 <GlobalFeedbackWrapper />
 
                 <Routes>

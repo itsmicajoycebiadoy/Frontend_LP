@@ -27,7 +27,7 @@ const Reservations = () => {
 
   // State Management
   const [cart, setCart] = useState([]);
-  const [amenities, setAmenities] = useState([]); // ✅ NEW: Store availability data here
+  const [amenities, setAmenities] = useState([]); 
   const [showCartModal, setShowCartModal] = useState(false);
   const [showReservationsModal, setShowReservationsModal] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState(null);
@@ -36,7 +36,7 @@ const Reservations = () => {
   // State for locally hidden history items
   const [hiddenHistoryIds, setHiddenHistoryIds] = useState([]);
 
-  // ✅ Updated State: Included numGuest (default to 1)
+  // Updated State: Included numGuest (default to 1)
   const [reservationForm, setReservationForm] = useState({
     fullName: "",
     address: "",
@@ -52,8 +52,8 @@ const Reservations = () => {
   const [reservationCount, setReservationCount] = useState(0);
   const [isLoadingReservations, setIsLoadingReservations] = useState(false);
   
-  // Flag to prevent saving empty cart during initial load
-  const [isCartLoaded, setIsCartLoaded] = useState(false);
+  // ✅ FIX: Pinalitan ang isCartLoaded ng loadedUserKey para track kung kaninong cart ang nasa screen
+  const [loadedUserKey, setLoadedUserKey] = useState(null);
 
   // Load user data from AuthContext
   useEffect(() => {
@@ -65,7 +65,7 @@ const Reservations = () => {
     }
   }, [user]);
 
-  // Load Cart based on User Identity
+  // ✅ FIX: Load Cart based on User Identity
   useEffect(() => {
     const userId = user?.id || user?._id || user?.userId;
     const storageKey = userId ? `cart_${userId}` : "cart_guest";
@@ -89,22 +89,25 @@ const Reservations = () => {
       setCart([]);
     }
     
-    setIsCartLoaded(true);
+    // Set kung kaninong cart ang na-load para hindi mag-save sa maling storage
+    setLoadedUserKey(storageKey);
   }, [user]);
 
-  // Save Cart based on User Identity
+  // ✅ FIX: Save Cart based on User Identity with Guard Clause
   useEffect(() => {
-    if (isCartLoaded) {
-      const userId = user?.id || user?._id || user?.userId;
-      const storageKey = userId ? `cart_${userId}` : "cart_guest";
-      
-      console.log(`💾 Saving cart to key: ${storageKey}`, cart);
-      localStorage.setItem(storageKey, JSON.stringify(cart));
+    const userId = user?.id || user?._id || user?.userId;
+    const currentKey = userId ? `cart_${userId}` : "cart_guest";
+    
+    // Check muna kung ang cart na nasa screen (loadedUserKey) ay match sa user na naka-login (currentKey)
+    // Para hindi ma-overwrite ang cart ng guest gamit ang cart ng user (o vice versa) habang nagpapalit
+    if (loadedUserKey === currentKey) {
+      console.log(`💾 Saving cart to key: ${currentKey}`, cart);
+      localStorage.setItem(currentKey, JSON.stringify(cart));
     }
-  }, [cart, user, isCartLoaded]);
+  }, [cart, user, loadedUserKey]);
 
   // ------------------------------------------------------------------
-  // ✅ FIXED: FETCH AVAILABILITY WITH LOCAL TIME FORMATTING
+  // FETCH AVAILABILITY WITH LOCAL TIME FORMATTING
   // ------------------------------------------------------------------
   const fetchAvailability = async () => {
     try {
@@ -150,7 +153,7 @@ const Reservations = () => {
     }
   };
 
-  // ✅ Trigger agad kapag nagbago ang Check-in (kahit wala pang check-out)
+  // Trigger agad kapag nagbago ang Check-in (kahit wala pang check-out)
   useEffect(() => {
     fetchAvailability();
   }, [reservationForm.checkInDate, reservationForm.checkOutDate]);
@@ -440,7 +443,7 @@ const Reservations = () => {
     }
 
     // ------------------------------------------------------------------
-    // ✅ NEW: CONFLICT CHECKING GUARD (The "Pulis")
+    // CONFLICT CHECKING GUARD (The "Pulis")
     // ------------------------------------------------------------------
     const hasConflict = cart.some(item => {
         // Find availability for this item
@@ -572,12 +575,12 @@ const Reservations = () => {
 
   // Auto-add selected amenity with cleanup
   useEffect(() => {
-    if (selectedAmenity && isCartLoaded) {
+    if (selectedAmenity && loadedUserKey) { // Ensure cart is loaded before adding
       handleAddToCart(selectedAmenity);
       navigate(location.pathname, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAmenity, isCartLoaded]); 
+  }, [selectedAmenity, loadedUserKey]); 
 
   // Logout
   const handleLogout = () => {
@@ -834,7 +837,6 @@ const Reservations = () => {
             formErrors={formErrors}
             imagePreview={imagePreview}
             cart={cart}
-            // ✅ NEW: PASSING AMENITIES PROP TO CHILD
             amenities={amenities}
             calculateTotal={calculateTotal}
             calculateDownpayment={calculateDownpayment}
@@ -857,7 +859,6 @@ const Reservations = () => {
         isOpen={showCartModal}
         onClose={() => setShowCartModal(false)}
         cart={cart}
-        // ✅ NEW: PASSING AMENITIES PROP TO MODAL (for display validation)
         amenities={amenities}
         removeFromCart={removeFromCart}
         adjustQuantity={adjustQuantity}

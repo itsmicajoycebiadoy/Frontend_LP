@@ -13,9 +13,6 @@ const getImageUrl = (imagePath) => {
   return `${backendUrl}/uploads/${imagePath}`;
 };
 
-// ==========================================
-// 1. MOBILE TRANSACTION MODAL (UPDATED PAYMENT SECTION)
-// ==========================================
 export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewProof, onViewDetails, onStatusUpdate, onExtendBooking, loading }) => {
   if (!isOpen || !transaction) return null;
 
@@ -66,14 +63,13 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
               <h3 className="text-lg font-bold flex items-center gap-2"><FileText size={20}/> Reservation Details</h3>
               <p className="text-xs text-orange-100 font-mono mt-0.5">{transaction.transaction_ref}</p>
             </div>
-            {/* DISABLED CLOSE BUTTON IF LOADING */}
             <button onClick={onClose} disabled={loading} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white disabled:opacity-50">
               <X size={20} />
             </button>
           </div>
 
           <div className="px-6 py-6 space-y-5 bg-gray-50/50">
-            {/* Customer Info */}
+
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="bg-orange-50 p-2.5 rounded-full border border-orange-100">
@@ -140,14 +136,12 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
               </div>
             )}
 
-            {/* ✅ Payment - UPDATED WITH "BREAKDOWN" BUTTON */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <CreditCard size={16} className="text-gray-500" />
                   <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Payment</h4>
                 </div>
-                {/* 👇 Added Breakdown Button for Mobile */}
                 <button 
                   onClick={() => onViewDetails(transaction, 'payment')} 
                   className="text-blue-600 text-xs font-bold hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full transition-colors"
@@ -195,7 +189,6 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
             </div>
           </div>
 
-          {/* ACTION BUTTONS (MOBILE) */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 pb-6 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex flex-wrap gap-3">
               {transaction.booking_status === 'Pending' && !transaction.proof_of_payment ? (
@@ -233,9 +226,6 @@ export const MobileTransactionModal = ({ transaction, isOpen, onClose, onViewPro
   );
 };
 
-// ==========================================
-// 2. ACTION MODAL
-// ==========================================
 export const ActionModal = ({ isOpen, type, transaction, onClose, onConfirm, loading }) => {
   if (!isOpen || !transaction) return null;
 
@@ -288,9 +278,6 @@ export const ActionModal = ({ isOpen, type, transaction, onClose, onConfirm, loa
   );
 };
 
-// ==========================================
-// 3. PROOF MODAL
-// ==========================================
 export const ProofModal = ({ isOpen, transaction, onClose, imageErrors, onRetryLoad, onError, onAction, loading }) => {
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -370,9 +357,6 @@ export const ProofModal = ({ isOpen, transaction, onClose, imageErrors, onRetryL
   );
 };
 
-// ==========================================
-// 4. CHECK-IN MODAL
-// ==========================================
 export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading }) => {
   if (!isOpen || !transaction) return null;
   const hasBalance = Number(transaction.balance) > 0;
@@ -414,9 +398,6 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
   );
 };
 
-// ==========================================
-// 5. DETAIL MODAL (UPDATED FOR PAYMENT BREAKDOWN)
-// ==========================================
 export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   if (!isOpen || !transaction) return null;
 
@@ -425,22 +406,19 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   
   // Computations
   const extensionTotal = extensions.reduce((sum, ext) => sum + parseFloat(ext.additional_cost || 0), 0);
-  const totalAmount = parseFloat(transaction.total_amount || 0); // Grand Total
-  const downpayment = parseFloat(transaction.downpayment || 0);   // 20% DP
-  const balance = parseFloat(transaction.balance || 0);           // Remaining Balance
+  const totalAmount = parseFloat(transaction.total_amount || 0); 
+  const downpayment = parseFloat(transaction.downpayment || 0);   
+  const balance = parseFloat(transaction.balance || 0);           
   
-  // Base total (Original booking price without extensions)
   const baseTotal = totalAmount - extensionTotal; 
 
   const guestCount = parseInt(transaction.num_guest) || 0;
   const entranceFee = guestCount * 50;
 
-  // View Type Checks
   const isAmenityView = viewType === 'amenities';
   const isExtensionView = viewType === 'extensions';
   const isPaymentView = viewType === 'payment';
 
-  // Dynamic Header Title & Icon
   let title = 'Details';
   let TitleIcon = FileText;
   let iconColor = 'text-gray-500';
@@ -475,7 +453,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
         {/* Body */}
         <div className="p-6 overflow-y-auto custom-scrollbar bg-white">
           
-          {/* Common Customer Info Header */}
           <div className="mb-6 border-b border-gray-50 pb-4">
             <h2 className="text-2xl font-bold text-slate-900">{transaction.customer_name}</h2>
             <div className="flex justify-between items-center mt-1">
@@ -486,9 +463,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           </div>
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: AMENITIES */}
-          {/* ------------------------------------------- */}
           {isAmenityView && (
             <div className="space-y-1">
               {reservations.map((res, idx) => (
@@ -513,9 +487,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           )}
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: EXTENSIONS */}
-          {/* ------------------------------------------- */}
           {isExtensionView && (
             <div className="space-y-4">
                {extensions.length === 0 ? (
@@ -540,9 +511,7 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           )}
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: PAYMENT BREAKDOWN */}
-          {/* ------------------------------------------- */}
+
           {isPaymentView && (
              <div className="space-y-6">
                 
@@ -603,9 +572,7 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   );
 };
 
-// ==========================================
-// 6. EXTEND MODAL
-// ==========================================
+
 export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading }) => {
   const [extendHours, setExtendHours] = useState(1);
 
@@ -633,7 +600,6 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
   };
 
   const handleSubmit = () => {
-    // FIX: Use MANUAL Formatting to avoid UTC conversion shifts
     const year = newOutDateObj.getFullYear();
     const month = String(newOutDateObj.getMonth() + 1).padStart(2, '0');
     const day = String(newOutDateObj.getDate()).padStart(2, '0');
@@ -641,11 +607,10 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
     const minutes = String(newOutDateObj.getMinutes()).padStart(2, '0');
     const seconds = String(newOutDateObj.getSeconds()).padStart(2, '0');
     
-    // Format: YYYY-MM-DD HH:mm:ss (Local Time)
     const formattedLocal = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
     onExtend({
-      newCheckoutDate: formattedLocal, // Send this LOCAL time string
+      newCheckoutDate: formattedLocal, 
       additionalAmount,
       extensionType: 'Hourly',
       extensionValue: extendHours,

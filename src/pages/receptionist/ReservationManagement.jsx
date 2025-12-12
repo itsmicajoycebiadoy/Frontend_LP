@@ -1,18 +1,13 @@
 import React, { useState } from 'react';
 import api from '../../config/axios';
-
-// Imports
 import TransactionFilters from '../../components/OnlineReservationComponent/TransactionFilters';
 import TransactionTable from '../../components/OnlineReservationComponent/TransactionTable';
 import { ActionModal, ProofModal, DetailModal, CheckInModal, ExtendModal } from '../../components/OnlineReservationComponent/TransactionModals';
 
 const ReservationManagement = () => {
-  // --- 1. FILTER STATE (Lifted State) ---
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewMode, setViewMode] = useState('active'); 
-
-  // --- 2. MODAL STATE ---
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [modalState, setModalState] = useState({ 
     detail: false, 
@@ -25,10 +20,6 @@ const ReservationManagement = () => {
   const [actionType, setActionType] = useState('');
   const [loading, setLoading] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
-
-  // --- HANDLERS (API Calls) ---
-  // Note: Wala nang `fetchData()` dito kasi automatic na magre-refresh ang Table every 3 seconds.
-
   const handleAction = async (action, transactionToUpdate = null) => {
     const targetTransaction = transactionToUpdate || selectedTransaction;
     if (!targetTransaction) return;
@@ -37,10 +28,10 @@ const ReservationManagement = () => {
     try {
       await api.put(`/api/transactions/${targetTransaction.id}/status`, { booking_status: action });
       
-      // Close modals
+
       setModalState({ detail: false, action: false, proof: false, checkIn: false, extend: false });
       setSelectedTransaction(null);
-      // Table will auto-refresh via its internal interval
+  
     } catch (error) { 
       console.error(error); 
       alert('Failed to update status.'); 
@@ -50,37 +41,22 @@ const ReservationManagement = () => {
   };
 
   const handleStatusUpdate = (id, newStatus) => {
-    // Find transaction manually if needed, or pass full object from table
-    // Since we pass ID from table, let's find it temporarily or adjust Table to pass object
-    // Mas maganda kung ipapasa na ng Table ang buong object, pero kung ID lang:
-    // Sa scenario na 'to, assume natin na handleStatusUpdate sa table ay nagpapasa na ng action trigger.
-    
-    // Quick Fix: Since the table logic I gave you calls onStatusUpdate(id, status),
-    // we need to set the action type.
+  
     if (newStatus === 'Checked-In') {
-       // For check-in, we usually need the object to show details in modal.
-       // NOTE: Updating TransactionTable to pass object is better, but for now lets rely on Table selection.
-       // Workaround: We'll fetch the specific transaction or rely on row click logic if available.
-       // Actually, the easiest way is to let the Table pass the object or handle it there.
-       // But assuming generic handler:
+
        setModalState(prev => ({ ...prev, checkIn: true }));
     } else {
        if(!window.confirm(`Update status to ${newStatus}?`)) return;
-       // Direct API call for simple status changes
        api.put(`/api/transactions/${id}/status`, { booking_status: newStatus })
           .catch(() => alert("Failed to update status."));
     }
   };
 
-  // Override handler specifically for the Table's "onStatusUpdate" prop
-  // The table passes (id, status). We need to support that.
   const onTableStatusUpdate = async (id, newStatus) => {
       if (newStatus === 'Checked-In') {
-          // We need the transaction object for the modal. 
-          // Since we don't have the list here, we can fetch it or just set ID.
-          // Better approach: Let's fetch that single transaction to populate the modal
+
           try {
-            const res = await api.get(`/api/transactions/${id}`); // Assuming you have this endpoint or use list
+            const res = await api.get(`/api/transactions/${id}`); 
             setSelectedTransaction(res.data);
             setModalState(prev => ({ ...prev, checkIn: true }));
           } catch(e) {
@@ -161,7 +137,6 @@ const ReservationManagement = () => {
         <p className="text-gray-500 text-sm">Manage website bookings & proof of payments.</p>
       </div>
       
-      {/* 1. FILTER COMPONENT (Controls the state) */}
       <TransactionFilters 
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
@@ -171,9 +146,8 @@ const ReservationManagement = () => {
         setViewMode={setViewMode}
       />
       
-      {/* 2. TABLE COMPONENT (Consumes state & Auto-refreshes data) */}
       <TransactionTable 
-        // Filter Props
+
         searchQuery={searchQuery}
         viewMode={viewMode}
         statusFilter={statusFilter}
@@ -186,7 +160,6 @@ const ReservationManagement = () => {
         onExtendBooking={handleExtendClick}
       />
       
-      {/* --- MODALS (Managed by Parent) --- */}
       
       <ActionModal 
         isOpen={modalState.action} 

@@ -1,10 +1,9 @@
-// FILE: src/pages/receptionist/receptionistdashboardcomponents/CustomerSearch.jsx
 import React, { useState } from 'react';
 import { Search, User, Phone, MapPin, Calendar, DollarSign, Package, AlertCircle, Eye, X, FileText } from 'lucide-react';
 import api from '../../config/axios';
 
 const CustomerSearch = () => {
-  const [searchType, setSearchType] = useState('reference'); // 'reference' or 'customer'
+  const [searchType, setSearchType] = useState('reference');
   const [searchData, setSearchData] = useState({
     reference: '',
     customerName: '',
@@ -25,11 +24,9 @@ const CustomerSearch = () => {
       let response;
       
       if (searchType === 'reference') {
-        // Search by transaction reference
         response = await api.get(`/api/transactions/${searchData.reference}`);
         setResults(response.data.data ? [response.data.data] : []);
       } else {
-        // Search by customer info
         response = await api.get('/api/transactions/customer', {
           params: {
             customer_name: searchData.customerName,
@@ -443,7 +440,6 @@ const CustomerSearch = () => {
                     </div>
                   </div>
 
-                  {/* Quick Info */}
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600">
                       <span className="font-semibold">Amenities:</span> {transaction.reservations?.map(r => r.amenity_name).join(', ') || 'N/A'}

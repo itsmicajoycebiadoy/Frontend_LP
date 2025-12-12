@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../config/axios';
 
@@ -16,11 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Logout function
   const logout = useCallback(async () => {
     try {
-      // Attempt to notify backend
       await api.post('/api/auth/logout');
     } catch (error) {
       console.log("Error during backend logout (Client-side clear only):", error.message);
@@ -38,7 +34,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -51,12 +46,11 @@ export const AuthProvider = ({ children }) => {
           setUser(JSON.parse(storedUser));
           setIsAuthenticated(true);
           
-          // FIXED: Tinanggal ang '/api/auth/verify' call dito dahil wala ito sa iyong UserRoutes.js.
-          // Ito ang solusyon sa 404 error na nakikita mo sa console.
+   
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        // If data is corrupted, clear it
+
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       } finally {
@@ -67,13 +61,12 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [logout]);
 
-  // Login function
   const login = async (emailOrUser, password = null) => {
     try {
       console.log('🔐 Attempting login...');
       let userData, token;
 
-      // Scenario 1: Normal Login (email, pass)
+
       if (typeof emailOrUser === 'string' && password) {
         const response = await api.post('/api/auth/login', { 
           email: emailOrUser, 
@@ -82,15 +75,14 @@ export const AuthProvider = ({ children }) => {
 
         const { data } = response;
         if (!data.success && !data.token) { 
-          // Note: Some backends might not send 'success: true' explicitly if using standard JWT responses,
-          // but checking for token is the most important part.
+
           return { success: false, message: data.message || 'Login failed' };
         }
 
         userData = data.user;
         token = data.token;
       } 
-      // Scenario 2: Direct Object Login (Manual set)
+
       else if (typeof emailOrUser === 'object') {
         userData = emailOrUser;
         token = password;
@@ -103,15 +95,14 @@ export const AuthProvider = ({ children }) => {
           return { success: false, message: "Invalid token received." };
       }
 
-      // Store user data
+
       setUser(userData);
       setIsAuthenticated(true);
 
-      // Store in localStorage
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
 
-      // Set default axios header
+
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       return { success: true, user: userData, message: 'Login successful' };
@@ -122,14 +113,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
   const register = async (userData) => {
     try {
-      // FIXED: Changed endpoint to '/api/auth/signup' to match UserRoutes.js
       const response = await api.post('/api/auth/signup', userData);
       const { data } = response;
       
-      // Check for success flag or success message
       if (data.success || data.message?.includes('success')) {
         return { success: true, message: data.message, user: data.user };
       } else {
@@ -140,7 +128,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Update Profile
   const updateProfile = async (userData) => {
     try {
       const response = await api.put('/api/users/profile', userData);
@@ -167,12 +154,10 @@ export const AuthProvider = ({ children }) => {
 
   const forgotPassword = async (email) => {
     try {
-      // Matches UserRoutes.js
       const response = await api.post('/api/auth/forgot-password', { email });
       return { success: response.data.success, message: response.data.message };
     } catch (error) {
       console.log("Forgot password error:", error);
-      // Always return success to prevent email enumeration (security best practice)
       return { success: true, message: 'If account exists, email sent.' };
     }
   };
@@ -196,7 +181,6 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      // Note: Ensure you have a route for this in your backend user routes
       const response = await api.get('/api/users/profile');
       if (response.data.success && response.data.user) {
         setUser(response.data.user);

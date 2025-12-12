@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Calendar, AlertCircle, Clock } from 'lucide-react';
 
 const WalkInForm = ({ formData, setFormData, errors = {} }) => {
-    // Local state for duration to compute checkout automatically
     const [durationHours, setDurationHours] = useState('');
 
-    // --- EFFECT: Auto-compute Check-out when Check-in or Duration changes ---
     useEffect(() => {
         if (formData.checkInDate && durationHours) {
             const checkIn = new Date(formData.checkInDate);
@@ -14,7 +12,6 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
             if (!isNaN(checkIn.getTime()) && !isNaN(hoursToAdd) && hoursToAdd > 0) {
                 checkIn.setHours(checkIn.getHours() + hoursToAdd);
                 
-                // Format to local datetime string (YYYY-MM-DDTHH:mm)
                 const year = checkIn.getFullYear();
                 const month = String(checkIn.getMonth() + 1).padStart(2, '0');
                 const day = String(checkIn.getDate()).padStart(2, '0');
@@ -28,14 +25,13 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
         }
     }, [formData.checkInDate, durationHours, setFormData]);
 
-    // --- HANDLERS ---
     const handleCheckInChange = (e) => {
         setFormData({ ...formData, checkInDate: e.target.value });
     };
 
     const handleCheckOutChange = (e) => {
         setFormData({ ...formData, checkOutDate: e.target.value });
-        setDurationHours(''); // Clear duration if manually set
+        setDurationHours('');
     };
 
     const handleDurationChange = (e) => {
@@ -59,12 +55,9 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
     };
 
     return (
-        // LAYOUT CHANGE: Changed from space-y-6 to Grid (Side-by-Side)
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start font-sans">
             
-            {/* LEFT: Customer Details Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                {/* Tinanggal ko ang 'border-b' at 'pb-4' dito */}
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
                     <User className="w-5 h-5 text-orange-500"/> 
                     Customer Details
@@ -97,9 +90,7 @@ const WalkInForm = ({ formData, setFormData, errors = {} }) => {
                 </div>
             </div>
 
-            {/* RIGHT: Schedule Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                {/* Tinanggal ko rin ang 'border-b' at 'pb-4' dito */}
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
                     <Calendar className="w-5 h-5 text-orange-500"/> 
                     Schedule

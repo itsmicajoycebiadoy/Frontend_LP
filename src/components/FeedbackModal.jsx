@@ -27,7 +27,6 @@ const FeedbackModal = () => {
 
         const checkEligibility = async () => {
             if (loading) return;
-            // Only Check for CUSTOMERS
             if (!user || !user.id || user.role !== 'customer') return; 
 
             setName(user.name || ""); 
