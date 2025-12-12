@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../config/axios';
-import Header from '../../components/Header'; // Ang updated na Header
+import Header from '../../components/Header'; 
 import { useAuth } from '../AuthContext';
-
-// Import Sub-Components
 import ReservationOverview from './ReservationOverview';
 import ReservationManagement from './ReservationManagement';
 import WalkInBooking from './WalkInBooking';
@@ -12,13 +10,8 @@ import WalkInBooking from './WalkInBooking';
 const ReceptionistDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
-  // State for Navigation (Default: 'overview')
-  // Ito ang ipapasa natin sa Header
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
-  
-  // Data states
   const [transactions, setTransactions] = useState([]);
   const [stats, setStats] = useState({
     pending: 0,
@@ -28,7 +21,6 @@ const ReceptionistDashboard = () => {
     today: 0
   });
 
-  // Auth Check
   useEffect(() => {
     if (!user) {
       navigate('/', { replace: true });
@@ -75,8 +67,6 @@ const ReceptionistDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden font-sans"> 
       
-      {/* --- UPDATED HEADER IMPLEMENTATION --- */}
-      {/* Ipapasa natin ang activeTab at setActiveTab para gumana ang buttons sa taas */}
       <Header 
         user={user} 
         onLogout={handleLogout} 
@@ -84,7 +74,7 @@ const ReceptionistDashboard = () => {
         setActiveTab={setActiveTab} 
       />
 
-      {/* Main Content Area */}
+
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
            <div className="flex justify-center items-center h-64">
@@ -92,7 +82,6 @@ const ReceptionistDashboard = () => {
            </div>
         ) : (
           <>
-            {/* Conditional Rendering base sa pinindot sa Header */}
             <div className="animate-in fade-in duration-300">
               {activeTab === 'overview' && (
                 <ReservationOverview stats={stats} transactions={transactions} fetchData={fetchDashboardData} />

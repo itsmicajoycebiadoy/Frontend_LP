@@ -8,7 +8,6 @@ import {
   CheckCircle2, Grid, User, ArrowUpRight, ArrowDownRight, Minus 
 } from 'lucide-react';
 
-// --- SUB-COMPONENTS ---
 
 const StarRating = ({ rating, max = 5, size = 14 }) => (
   <div className="flex items-center gap-0.5">
@@ -23,18 +22,13 @@ const StarRating = ({ rating, max = 5, size = 14 }) => (
   </div>
 );
 
-// Stat Card with Trend Indicator
 const CategoryStatCard = ({ label, score, prevScore, color, Icon }) => {
   const diff = Number(score) - Number(prevScore);
   const isPositive = diff > 0;
   const isNeutral = diff === 0;
-  
-  // Logic: Positive diff is Good (Green), Negative is Bad (Red)
   const trendColor = isNeutral ? 'text-slate-400' : (isPositive ? 'text-emerald-600' : 'text-rose-500');
   const TrendIcon = isNeutral ? Minus : (isPositive ? ArrowUpRight : ArrowDownRight);
   const trendBg = isNeutral ? 'bg-slate-100' : (isPositive ? 'bg-emerald-50' : 'bg-rose-50');
-
-  // Only show trend if there is a previous score to compare against
   const showTrend = prevScore > 0;
 
   return (
@@ -134,8 +128,6 @@ const FeedbackItem = ({ feedback }) => {
   );
 };
 
-// --- MAIN COMPONENT ---
-
 const OwnerFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -156,12 +148,12 @@ const OwnerFeedback = () => {
   const [timePeriod, setTimePeriod] = useState('month');
 
   const COLORS = {
-    positive: '#10B981', // Emerald
-    neutral: '#F59E0B',  // Amber
-    negative: '#F43F5E', // Rose
-    service: '#3B82F6',  // Blue
+    positive: '#10B981',
+    neutral: '#F59E0B', 
+    negative: '#F43F5E', 
+    service: '#3B82F6',  
     cleanliness: '#10B981',
-    amenities: '#F97316' // Orange
+    amenities: '#F97316' 
   };
 
   const TIME_OPTIONS = [
@@ -169,22 +161,20 @@ const OwnerFeedback = () => {
     { value: 'month', label: 'Monthly' },
     { value: 'year', label: 'Yearly' }
   ];
-
-  // --- UPDATED: FETCH WITH SILENT AUTO REFRESH ---
+-
   useEffect(() => {
-    // 1. Initial Load (Show Spinner)
+   
     fetchFeedback(false);
 
-    // 2. Set Interval (Silent Background Refresh every 3s)
     const intervalId = setInterval(() => {
         fetchFeedback(true);
     }, 3000);
 
-    // 3. Cleanup
+  
     return () => clearInterval(intervalId);
-  }, []); // Depend on empty array if API returns ALL data and we filter locally
+  }, []); 
 
-  // Separate function to handle background check
+
   const fetchFeedback = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     
@@ -230,7 +220,6 @@ const OwnerFeedback = () => {
       setActiveFilter('custom'); 
   };
 
-  // Apply Filtering Logic (Current Period)
   useEffect(() => {
     if (!feedbackData.length) {
       setFilteredData([]);
@@ -310,7 +299,6 @@ const OwnerFeedback = () => {
     return { current, previous };
   }, [filteredData, feedbackData, dateRange]);
 
-  // Apply Sentiment Filter for List Display
   const displayedData = useMemo(() => {
     if (filterType === 'all') return filteredData;
     return filteredData.filter(feedback => {

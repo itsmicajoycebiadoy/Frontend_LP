@@ -1,8 +1,6 @@
 import React from 'react';
 
 const AmenitiesCard = ({ amenity, onBook }) => {
-  // --- 1. LOGIC FIXED: Check Dynamic Slots ---
-  // Kung may "slots_left" galing database, dun tayo babase. Kung wala, fallback sa "available" status.
   const hasStocks = amenity.slots_left !== undefined ? amenity.slots_left > 0 : true;
   
   const isAvailable = 
@@ -16,8 +14,7 @@ const AmenitiesCard = ({ amenity, onBook }) => {
 
   return (
     <div className="relative w-full h-[500px] rounded-xl overflow-hidden shadow-xl group border border-gray-200">
-      
-      {/* BACKGROUND IMAGE */}
+    
       <img
         src={amenity.image}
         alt={amenity.name}
@@ -57,7 +54,6 @@ const AmenitiesCard = ({ amenity, onBook }) => {
               {amenity.description}
             </p>
 
-            {/* Capacity & Price Row */}
             <div className="flex items-center justify-between mb-5 border-t border-white/20 pt-4">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,7 +62,6 @@ const AmenitiesCard = ({ amenity, onBook }) => {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                {/* Display remaining slots if available */}
                 <span>
                     {amenity.slots_left !== undefined 
                         ? `${amenity.slots_left} unit(s) left` 
@@ -80,7 +75,6 @@ const AmenitiesCard = ({ amenity, onBook }) => {
               </div>
             </div>
             
-            {/* BUTTON ACTION */}
             <button 
               onClick={() => onBook(amenity)}
               disabled={!isAvailable}

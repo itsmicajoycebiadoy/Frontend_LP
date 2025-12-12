@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Trash2, Clock, History, XCircle, Eye, CreditCard, User, MapPin, Phone } from 'lucide-react';
 
 const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation, onDeleteHistory }) => {
   const [activeTab, setActiveTab] = useState('active'); 
-  const [selectedReceipt, setSelectedReceipt] = useState(null); // State for the selected receipt
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Active now includes 'Checked-In'
   const activeStatuses = ['Pending', 'Confirmed', 'Paid', 'Check-in', 'Checked-In'];
   const historyStatuses = ['Cancelled', 'Declined', 'Completed', 'Checkout', 'Check-out'];
 
@@ -34,7 +45,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
     });
   };
 
-  // Helper to parse extension history
   const getExtensionData = (reservation) => {
     const history = reservation.rawTransaction?.extension_history;
     if (!history) return [];
@@ -81,56 +91,44 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
     return <span className="text-gray-400">-</span>;
   };
 
-  // --- RECEIPT COMPONENT ---
   const ReceiptModal = ({ reservation, onClose }) => {
+
     if (!reservation) return null;
 
     const tx = reservation.rawTransaction || {};
-    // Extract raw reservations (cart items)
-    // Note: In some DB structures, this might be 'reservations' array inside rawTransaction
-    // If getting from 'getAllWithReservations' it might be parsed from JSON.
-    // We try to use the raw data if available for price/qty breakdown.
     const cartItems = tx.reservations || []; 
     
-    // Calculate Days
     const start = new Date(reservation.checkInDate);
     const end = new Date(reservation.checkOutDate);
     let days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) || 1;
     if (days < 1) days = 1;
 
-    // Extensions
     const extensions = getExtensionData(reservation);
-    const totalExtensionCost = extensions.reduce((sum, ext) => sum + parseFloat(ext.additional_cost || ext.price || 0), 0);
 
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
           
-          {/* Receipt Header */}
-          <div className="bg-gray-900 p-5 flex justify-between items-start">
+          <div className="bg-lp-orange p-5 flex justify-between items-start flex-shrink-0">
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-lp-orange" />
+                <CreditCard className="w-5 h-5 text-white" />
                 Reservation Summary
               </h3>
-              <p className="text-gray-400 text-xs mt-1">{reservation.reservationNumber}</p>
+              <p className="text-white/80 text-xs mt-1">{reservation.reservationNumber}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
               <XCircle className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Scrollable Content */}
           <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
-            
-            {/* Status Badge */}
             <div className="flex justify-center mb-6">
                <span className={`px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider ${getStatusColor(reservation.status)}`}>
                  {reservation.status}
                </span>
             </div>
 
-            {/* Guest Details */}
             <div className="space-y-3 mb-6 pb-6 border-b border-dashed border-gray-200">
               <div className="flex items-center gap-3 text-sm text-gray-700">
                 <User className="w-4 h-4 text-gray-400" />
@@ -146,7 +144,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
               </div>
             </div>
 
-            {/* Date & Time */}
             <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm space-y-2 border border-gray-100">
                <div className="flex justify-between">
                  <span className="text-gray-500">Check-in:</span>
@@ -162,11 +159,8 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
                </div>
             </div>
 
-            {/* Line Items */}
             <div className="space-y-4 mb-6">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Breakdown</h4>
-              
-              {/* Amenities */}
               {cartItems.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-3">
@@ -178,8 +172,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
                   <span className="text-gray-900 font-semibold">₱{(parseFloat(item.price) * parseInt(item.quantity)).toLocaleString()}</span>
                 </div>
               ))}
-
-              {/* Entrance Fee */}
               {tx.num_guest > 0 && (
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-3">
@@ -193,22 +185,17 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
               )}
             </div>
 
-            {/* Totals Section */}
             <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
-              
-              {/* Extensions (If any) */}
               {extensions.map((ext, i) => (
                 <div key={i} className="flex justify-between text-purple-700 text-sm bg-purple-50 p-2 rounded">
                   <span>Extension (+{ext.hours}hrs)</span>
                   <span>+₱{parseFloat(ext.additional_cost).toLocaleString()}</span>
                 </div>
               ))}
-
               <div className="flex justify-between text-gray-900 font-bold text-lg pt-2">
                 <span>Grand Total</span>
                 <span>₱{reservation.totalAmount.toLocaleString()}</span>
               </div>
-
               <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100 mt-4">
                 <div className="flex flex-col">
                    <span className="text-orange-800 font-bold text-sm">Downpayment (20%)</span>
@@ -216,20 +203,17 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
                 </div>
                 <span className="text-xl font-extrabold text-lp-orange">₱{reservation.downpayment.toLocaleString()}</span>
               </div>
-
                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
                 <span className="text-gray-600 font-bold text-sm">Remaining Balance</span>
                 <span className="text-lg font-bold text-gray-800">₱{reservation.balance.toLocaleString()}</span>
               </div>
             </div>
-
           </div>
           
-          {/* Footer Actions */}
-          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end flex-shrink-0">
             <button 
               onClick={onClose}
-              className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium transition-colors"
+              className="px-6 py-2 bg-lp-orange text-white rounded-lg hover:bg-lp-orange-hover font-medium transition-colors"
             >
               Close Summary
             </button>
@@ -238,14 +222,12 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
       </div>
     );
   };
-  // -------------------------
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-3 md:p-4 font-body">
         <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full h-[85vh] max-h-[85vh] flex flex-col">
           
-          {/* Header */}
           <div className="p-4 sm:p-5 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-lg flex-shrink-0">
             <div>
               <h3 className="text-xl sm:text-2xl font-bold text-gray-900">My Reservations</h3>
@@ -254,7 +236,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl font-bold hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center">×</button>
           </div>
 
-          {/* Tabs */}
           <div className="flex border-b border-gray-200 flex-shrink-0">
             <button onClick={() => setActiveTab('active')} className={`flex-1 py-3 font-semibold flex items-center justify-center gap-2 ${activeTab === 'active' ? 'text-lp-orange border-b-2 border-lp-orange bg-orange-50/50' : 'text-gray-500 hover:bg-gray-50'}`}>
               <Clock className="w-4 h-4" /> Active Bookings <span className="bg-gray-100 text-xs rounded-full px-2">{activeReservations.length}</span>
@@ -264,8 +245,7 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-scroll bg-gray-50">
+          <div className={`flex-1 bg-gray-50 ${selectedReceipt ? 'overflow-hidden' : 'overflow-y-scroll'}`}>
             {currentList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 min-h-[300px]">
                 <p className="text-gray-900 font-medium text-lg">No {activeTab} reservations found</p>
@@ -293,7 +273,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
                           <div>In: {formatDateTime(res.checkInDate)}</div>
                           <div className="text-gray-500">Out: {formatDateTime(res.checkOutDate)}</div>
                         </td>
-                        {/* Extension Column */}
                         <td className="px-4 py-4 whitespace-nowrap bg-purple-50/30">
                           {renderExtensionDetails(res)}
                         </td>
@@ -301,10 +280,8 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(res.status)}`}>{res.status}</span>
                         </td>
-                        {/* ✅ UPDATED ACTIONS COLUMN */}
                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
                           <div className="flex items-center justify-end gap-2">
-                             {/* View Receipt Button */}
                              <button 
                                 onClick={() => setSelectedReceipt(res)} 
                                 className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors"
@@ -339,7 +316,6 @@ const ReservationsModal = ({ isOpen, onClose, reservations, onCancelReservation,
         </div>
       </div>
 
-      {/* Render the Receipt Modal if selected */}
       {selectedReceipt && (
         <ReceiptModal 
           reservation={selectedReceipt} 

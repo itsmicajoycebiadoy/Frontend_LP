@@ -62,7 +62,6 @@ export const MobileWalkinModal = ({ transaction, isOpen, onClose, onViewProof, o
       <div className="relative min-h-screen flex items-start justify-center p-4 pt-20">
         <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-slideIn">
           
-          {/* Header - ORANGE THEME */}
           <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-6 py-4 border-b border-white/10 rounded-t-2xl flex items-center justify-between text-white z-10">
             <div>
               <h3 className="text-lg font-bold flex items-center gap-2"><FileText size={20}/> Walk-In Details</h3>
@@ -141,14 +140,12 @@ export const MobileWalkinModal = ({ transaction, isOpen, onClose, onViewProof, o
               </div>
             )}
 
-            {/* ✅ Payment - WALK IN STYLE (Fully Paid) */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <CreditCard size={16} className="text-gray-500" />
                   <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Payment</h4>
                 </div>
-                {/* Breakdown Button - Orange Theme */}
                 <button 
                   onClick={() => onViewDetails(transaction, 'payment')} 
                   className="text-orange-600 text-xs font-bold hover:text-orange-800 flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-full transition-colors"
@@ -196,7 +193,6 @@ export const MobileWalkinModal = ({ transaction, isOpen, onClose, onViewProof, o
             </div>
           </div>
 
-          {/* ACTION BUTTONS - ORANGE THEME */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 pb-6 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex flex-wrap gap-3">
               {transaction.booking_status === 'Confirmed' ? (
@@ -230,9 +226,6 @@ export const MobileWalkinModal = ({ transaction, isOpen, onClose, onViewProof, o
   );
 };
 
-// ==========================================
-// 2. ACTION MODAL
-// ==========================================
 export const ActionModal = ({ isOpen, type, transaction, onClose, onConfirm, loading }) => {
   if (!isOpen || !transaction) return null;
 
@@ -285,9 +278,6 @@ export const ActionModal = ({ isOpen, type, transaction, onClose, onConfirm, loa
   );
 };
 
-// ==========================================
-// 3. PROOF MODAL
-// ==========================================
 export const ProofModal = ({ isOpen, transaction, onClose, imageErrors, onRetryLoad, onError }) => {
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -348,12 +338,8 @@ export const ProofModal = ({ isOpen, transaction, onClose, imageErrors, onRetryL
   );
 };
 
-// ==========================================
-// 4. CHECK-IN MODAL
-// ==========================================
 export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading }) => {
   if (!isOpen || !transaction) return null;
-  // For Walk-in, Check-in confirms "Paid & Check-in"
   
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
@@ -386,9 +372,6 @@ export const CheckInModal = ({ isOpen, transaction, onClose, onConfirm, loading 
   );
 };
 
-// ==========================================
-// 5. DETAIL MODAL (Fixed for Walk-In: Fully Paid Logic)
-// ==========================================
 export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   if (!isOpen || !transaction) return null;
 
@@ -397,9 +380,8 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   
   // Computations
   const extensionTotal = extensions.reduce((sum, ext) => sum + parseFloat(ext.additional_cost || 0), 0);
-  const totalAmount = parseFloat(transaction.total_amount || 0); // This should include extensions already
+  const totalAmount = parseFloat(transaction.total_amount || 0); 
   
-  // For Walk-in, base price is total minus extensions
   const baseTotal = totalAmount - extensionTotal; 
 
   const guestCount = parseInt(transaction.num_guest) || 0;
@@ -456,9 +438,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           </div>
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: AMENITIES */}
-          {/* ------------------------------------------- */}
           {isAmenityView && (
             <div className="space-y-1">
               {reservations.map((res, idx) => (
@@ -483,9 +462,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           )}
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: EXTENSIONS */}
-          {/* ------------------------------------------- */}
           {isExtensionView && (
             <div className="space-y-4">
                {extensions.length === 0 ? (
@@ -510,9 +486,7 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
             </div>
           )}
 
-          {/* ------------------------------------------- */}
-          {/* VIEW: PAYMENT BREAKDOWN (Walk-in Style) */}
-          {/* ------------------------------------------- */}
+
           {isPaymentView && (
              <div className="space-y-6">
                 
@@ -576,9 +550,6 @@ export const DetailModal = ({ isOpen, transaction, onClose, viewType }) => {
   );
 };
 
-// ==========================================
-// 6. EXTEND MODAL
-// ==========================================
 export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading }) => {
   const [extendHours, setExtendHours] = useState(1);
 
@@ -613,11 +584,10 @@ export const ExtendModal = ({ isOpen, transaction, onClose, onExtend, loading })
     const minutes = String(newOutDateObj.getMinutes()).padStart(2, '0');
     const seconds = String(newOutDateObj.getSeconds()).padStart(2, '0');
     
-    // Format: YYYY-MM-DD HH:mm:ss (Local Time)
     const formattedLocal = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
     onExtend({
-      newCheckoutDate: formattedLocal, // Send this LOCAL time string
+      newCheckoutDate: formattedLocal, 
       additionalAmount,
       extensionType: 'Hourly',
       extensionValue: extendHours,

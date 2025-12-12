@@ -10,14 +10,9 @@ import {
 } from 'lucide-react';
 
 const OwnerAnalytics = () => { 
-  // State for internal loading (not displayed)
   const [ setLoading] = useState(false);
   const [periodLabel, setPeriodLabel] = useState('vs last month');
-  
-  // NEW: State to track which quick filter is active
   const [activeFilter, setActiveFilter] = useState('month'); 
-  
-  // Default Date
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -36,43 +31,41 @@ const OwnerAnalytics = () => {
   
   const [transactions, setTransactions] = useState([]);
   const [tableFilter, setTableFilter] = useState('All'); 
-
-  // --- THEME ---
   const THEME = {
-      primary: '#F97316',    // LP Orange
-      secondary: '#3B82F6', // Blue
-      success: '#10B981',   // Emerald
-      danger: '#F43F5E',    // Rose
-      warning: '#F59E0B',   // Amber
-      text: '#334155',      // Slate 700
-      subtext: '#94a3b8',   // Slate 400
-      grid: '#f1f5f9',      // Slate 100
+      primary: '#F97316',  
+      secondary: '#3B82F6', 
+      success: '#10B981', 
+      danger: '#F43F5E',  
+      warning: '#F59E0B', 
+      text: '#334155',    
+      subtext: '#94a3b8',   
+      grid: '#f1f5f9',     
   };
 
   const STATUS_COLORS = {
       'Confirmed': THEME.success,
       'Completed': THEME.secondary,
       'Pending': THEME.warning,
-      'Checked-In': '#8B5CF6', // Purple
+      'Checked-In': '#8B5CF6',
       'Cancelled': THEME.danger
   };
 
-  // --- UPDATED USE EFFECT FOR AUTO REFRESH (3 SECONDS) ---
+
   useEffect(() => { 
-    // 1. Initial Load
+
     fetchDashboardData(false);
 
-    // 2. Set Interval - Uulit kada 3 seconds
+
     const intervalId = setInterval(() => {
         fetchDashboardData(true);
     }, 3000);
 
-    // 3. Cleanup
+
     return () => clearInterval(intervalId);
 
   }, [dateRange]); 
 
-  // --- UPDATED FETCH FUNCTION TO HANDLE BACKGROUND LOADING ---
+
   const fetchDashboardData = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     
@@ -171,10 +164,10 @@ const OwnerAnalytics = () => {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6 pb-12 font-sans text-slate-700">
       
-      {/* --- HEADER & CONTROLS --- */}
+
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         
-        {/* Title Section */}
+
         <div className="w-full xl:w-auto">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <BarChart2 className="text-orange-500"/> Analytics Dashboard
@@ -182,10 +175,10 @@ const OwnerAnalytics = () => {
           <p className="text-sm text-slate-500 mt-1">Real-time financial & operational insights</p>
         </div>
         
-        {/* --- CONTROLS SECTION --- */}
+
         <div className="flex flex-col xl:flex-row gap-4 w-full xl:w-auto bg-slate-50 p-4 rounded-xl border border-slate-100 items-start xl:items-end">
           
-          {/* 1. Quick Dates Row */}
+
           <div className="w-full xl:w-auto">
              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block xl:hidden">Quick Select</label>
              <div className="grid grid-cols-4 xl:flex gap-1 xl:gap-2 w-full xl:w-auto bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
@@ -209,7 +202,7 @@ const OwnerAnalytics = () => {
              </div>
           </div>
 
-          {/* 2. DATE INPUTS */}
+
           <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto items-end">
              <div className="w-full sm:w-auto flex flex-col gap-1">
                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</label>
@@ -237,7 +230,7 @@ const OwnerAnalytics = () => {
 
       <div className="relative min-h-[500px]">
         
-        {/* 1. KPI CARDS */}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
             <StatCard 
                 title="Gross Sales" 
@@ -279,7 +272,6 @@ const OwnerAnalytics = () => {
             />
         </div>
 
-        {/* 2. REVENUE TREND CHART */}
         <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
                 <div>
@@ -309,9 +301,8 @@ const OwnerAnalytics = () => {
             </div>
         </div>
 
-        {/* 3. SPLIT CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Booking Status */}
+
             <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
                 <h3 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
                     <BarChart2 size={18} className="text-purple-500"/> Booking Status
@@ -333,7 +324,6 @@ const OwnerAnalytics = () => {
                     </ResponsiveContainer>
                 </div>
             </div>
-            {/* Source Distribution */}
             <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
                 <h3 className="font-bold text-slate-800 mb-1">Source Distribution</h3>
                 <p className="text-xs text-slate-400 mb-6">Online vs Walk-in</p>
@@ -477,7 +467,6 @@ const OwnerAnalytics = () => {
   );
 };
 
-// --- SUB-COMPONENTS ---
 
 const StatCard = ({ title, value, trendValue, periodLabel, isPositive, color, bg, icon: Icon, isMoney = true }) => (
    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between relative overflow-hidden">

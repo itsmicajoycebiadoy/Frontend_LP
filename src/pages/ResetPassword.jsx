@@ -8,7 +8,12 @@ const ResetPassword = () => {
     password: "",
     confirmPassword: "",
   });
-  const [errors, setErrors] = useState("");
+  
+  const [errors, setErrors] = useState({
+    strength: "",
+    match: ""
+  });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -19,13 +24,33 @@ const ResetPassword = () => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
 
-    // Real-time password match check
-    if (name === "confirmPassword" && form.password && value !== form.password) {
-      setErrors("Passwords do not match");
-    } else if (name === "password" && form.confirmPassword && value !== form.confirmPassword) {
-      setErrors("Passwords do not match");
-    } else {
-      setErrors("");
+
+    if (name === "password") {
+
+       const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+       if (!strongPasswordRegex.test(value)) {
+         setErrors(prev => ({
+           ...prev,
+           strength: "Password must have 8+ chars, 1 uppercase, 1 lowercase, & 1 number."
+         }));
+       } else {
+         setErrors(prev => ({ ...prev, strength: "" }));
+       }
+
+
+       if (form.confirmPassword && value !== form.confirmPassword) {
+         setErrors(prev => ({ ...prev, match: "Passwords do not match" }));
+       } else {
+         setErrors(prev => ({ ...prev, match: "" }));
+       }
+    }
+
+    if (name === "confirmPassword") {
+       if (form.password && value !== form.password) {
+         setErrors(prev => ({ ...prev, match: "Passwords do not match" }));
+       } else {
+         setErrors(prev => ({ ...prev, match: "" }));
+       }
     }
   };
 
@@ -38,13 +63,14 @@ const ResetPassword = () => {
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
-      setErrors("Passwords do not match");
-      return;
+    // Strict validation
+    if (errors.strength || errors.match) {
+        alert("Please fix the errors before submitting.");
+        return;
     }
 
-    if (errors) {
-      alert("Please fix the errors.");
+    if (form.password !== form.confirmPassword) {
+      setErrors(prev => ({ ...prev, match: "Passwords do not match" }));
       return;
     }
 
@@ -78,13 +104,21 @@ const ResetPassword = () => {
         className="relative z-10 bg-lp-light-bg/90 p-8 rounded-xl shadow-xl w-96"
       >
         <div className="text-center mb-6">
+    
+          <img 
+              src="/images/Lp.png" 
+              alt="La Piscina Logo" 
+              className="h-24 w-auto mx-auto mb-4 object-contain"
+          />
+   
+
           <h1 className="text-2xl font-bold">Set New Password</h1>
           <p className="text-sm text-gray-600 mt-1">
             Enter your new password below.
           </p>
         </div>
 
-        {/* Password */}
+
         <div className="relative mb-2">
           <input
             type={showPassword ? "text" : "password"}
@@ -104,8 +138,15 @@ const ResetPassword = () => {
             </span>
           )}
         </div>
+        
 
-        {/* Confirm Password */}
+        {errors.strength && (
+          <p className="text-red-500 text-xs mt-1 mb-2 leading-tight break-words">
+            {errors.strength}
+          </p>
+        )}
+
+
         <div className="relative mb-2">
           <input
             type={showConfirmPassword ? "text" : "password"}
@@ -126,9 +167,8 @@ const ResetPassword = () => {
           )}
         </div>
 
-        {/* Password Match Error */}
-        {errors && (
-          <p className="text-red-500 text-sm mt-1">{errors}</p>
+        {errors.match && (
+          <p className="text-red-500 text-xs mt-1">{errors.match}</p>
         )}
 
         <button

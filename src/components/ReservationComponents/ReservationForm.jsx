@@ -7,7 +7,7 @@ const ReservationForm = ({
   formErrors,
   imagePreview,
   cart,
-  amenities = [], // ✅ Tumatanggap na ng live availability data
+  amenities = [], 
   calculateTotal,
   calculateDownpayment,
   handleReservationInputChange,
@@ -17,23 +17,16 @@ const ReservationForm = ({
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Local state para sa real-time validation errors
   const [localErrors, setLocalErrors] = useState({});
 
-  // --- 1. CONFLICT CHECKER LOGIC ---
   const checkConflict = (cartItem) => {
-    // ✅ VALIDATE AGAD: Basta may Check-in date, simulan na ang checking.
-    // Tinanggal na natin yung `&& !reservationForm.checkOutDate`
+
     if (!reservationForm.checkInDate) return null;
 
-    // Hanapin ang live status ng amenity galing sa Parent
     const amenityStatus = amenities.find(a => a.id === cartItem.amenity_id);
     
-    // Kung hindi makita, assume safe muna
     if (!amenityStatus) return null;
     
-    // Check kung ang quantity sa cart ay lagpas sa slots_left
-    // Dito lalabas na "0" ang slots_left kung may naka-book sa oras ng Check-in mo.
     if (cartItem.quantity > amenityStatus.slots_left) {
         return {
             isConflict: true,
@@ -43,13 +36,11 @@ const ReservationForm = ({
     return null;
   };
 
-  // Check kung may KAHIT ISANG conflict sa cart
   const hasAnyConflict = cart.some(item => {
       const conflict = checkConflict(item);
       return conflict && conflict.isConflict;
   });
 
-  // Prevent background scrolling when modal is active
   useEffect(() => {
     if (showConfirmationModal) {
       document.body.style.overflow = 'hidden';
@@ -61,7 +52,6 @@ const ReservationForm = ({
     };
   }, [showConfirmationModal]);
 
-  // Local Input Handler (Real-time Validation)
   const handleLocalInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -135,7 +125,6 @@ const ReservationForm = ({
 
       <form onSubmit={handleConfirmClick} className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
         
-        {/* LEFT COLUMN: User Details & Payment Upload (Span 7) */}
         <section className="lg:col-span-7 space-y-8">
           
           {/* Personal Information Card */}
@@ -259,8 +248,6 @@ const ReservationForm = ({
               </div>
             </div>
           </div>
-
-          {/* Payment Upload Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6 border-b pb-4">
               <Upload className="w-5 h-5 text-lp-orange" />
@@ -320,15 +307,12 @@ const ReservationForm = ({
             </div>
           </div>
         </section>
-
-        {/* RIGHT COLUMN: Order Summary & Payment Info (Span 5) - STICKY */}
         <section className="lg:col-span-5 mt-8 lg:mt-0">
           <div className="lg:sticky lg:top-24 space-y-6">
             
             {/* Order Summary Card */}
             <div className={`bg-white rounded-2xl shadow-lg border overflow-hidden ${hasAnyConflict ? 'border-red-200' : 'border-gray-100'}`}>
-              
-              {/* Header changes color based on conflict */}
+            
               <div className={`p-4 transition-colors duration-300 ${hasAnyConflict ? 'bg-red-600' : 'bg-lp-orange'}`}>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   {hasAnyConflict ? <AlertTriangle className="w-5 h-5"/> : <CreditCard className="w-5 h-5" />}
@@ -342,7 +326,7 @@ const ReservationForm = ({
                     <p className="text-gray-500 text-center py-4 italic text-sm">Your cart is empty.</p>
                   ) : (
                     cart.map((item) => {
-                      // Check conflict per item
+
                       const conflict = checkConflict(item);
 
                       return (
@@ -386,7 +370,6 @@ const ReservationForm = ({
                     })
                   )}
 
-                  {/* Entrance Fee Section */}
                   {cart.length > 0 && reservationForm.numGuest > 0 && (
                       <div className="flex justify-between items-center text-sm border-t border-dashed pt-2 px-3">
                       <div className="flex items-center gap-3">
@@ -400,7 +383,6 @@ const ReservationForm = ({
                   )}
                 </div>
 
-                {/* Footer Computations */}
                 <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
                   <div className="flex justify-between text-gray-500 text-sm">
                     <span>Subtotal (Amenities + Entrance)</span>
@@ -443,7 +425,7 @@ const ReservationForm = ({
               <div className="flex justify-center mb-6">
                 <div className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm">
                   <img 
-                    src="/images/gcash.jpg" 
+                    src="/images/paymentqr.jpg" 
                     alt="GCash QR Code" 
                     className="w-40 h-40 object-contain rounded-lg"
                     onError={(e) => {
@@ -513,7 +495,9 @@ const ReservationForm = ({
                     Downpayments are non-refundable once confirmed. Please ensure all details are correct.
                   </p>
                 </div>
+
                 
+                 {/* Summary inside modal for double checking */}
                  <div className="text-xs text-gray-500 pt-2 border-t">
                   <p>Guests: {reservationForm.numGuest}</p>
                   <p>Total: ₱{calculateTotal().toLocaleString()}</p>

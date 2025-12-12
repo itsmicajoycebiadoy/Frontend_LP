@@ -47,7 +47,6 @@ const Contact = () => {
     <div className="min-h-screen bg-lp-light-bg flex flex-col font-body">
       <Header user={user} />
 
-      {/* HERO SECTION - EDGE TO EDGE */}
       <section
         className="bg-cover bg-center text-white py-12 sm:py-16 lg:py-20 w-full"
         style={{
@@ -64,11 +63,9 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* MAIN CONTENT - EDGE TO EDGE */}
       <div className="flex-grow w-full px-4 sm:px-6 py-16">
         <div className="w-full">
           
-          {/* Contact Cards Grid - EDGE TO EDGE */}
           <div className="grid md:grid-cols-2 gap-8 mb-12 w-full">
             {contactInfo.map((item, index) => (
               <div key={index} className="bg-white p-8 shadow-sm hover:shadow-md transition-shadow border border-gray-100 flex items-start gap-6 w-full">
@@ -86,7 +83,6 @@ const Contact = () => {
             ))}
           </div>
 
-          {/* Emergency Contact Box - EDGE TO EDGE */}
           <div className="bg-orange-50 border border-orange-100 p-6 text-center w-full">
             <div className="flex items-center justify-center gap-2 mb-2 text-lp-orange">
               <Shield size={20} />
@@ -99,7 +95,6 @@ const Contact = () => {
         </div>
       </div>
 
-      {/* GOOGLE MAPS SECTION - EDGE TO EDGE */}
       <section className="w-full h-[450px]">
         <iframe 
           title="Resort Location"

@@ -7,7 +7,6 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
-  // Notification States
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -20,7 +19,6 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
   const role = user?.role ? user.role.toLowerCase() : 'guest';
   const userId = user?.id || user?._id || user?.userId;
 
-  // --- NAVIGATION ITEMS ---
   let navItems = [];
   if (role === 'customer') {
     navItems = [
@@ -44,7 +42,6 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
     ];
   }
 
-  // --- NOTIFICATION LOGIC ---
   const fetchNotifications = async () => {
     if (!userId || role === 'owner') return;
     
@@ -79,17 +76,15 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
           const ref = transaction.transaction_ref || `TXN-${transId}`;
           const statusLower = currentStatus.toLowerCase();
 
-          // DETECT CHANGES
           const isStatusChanged = prevStatus && prevStatus !== currentStatus;
           const isNewBooking = !prevStatus && currentStatus === 'Pending';
 
           if (isStatusChanged || isNewBooking) {
               let message = '';
               let type = 'info';
-              let statusLabel = ''; // For the Tag Design
+              let statusLabel = ''; 
               
               if (role === 'receptionist') {
-                  // >>>> RECEPTIONIST LOGIC (Technical & General) <<<<
                   if (statusLower === 'pending' && isNewBooking) {
                       message = `System Alert: New reservation request received.`;
                       type = 'recep_new_request';
@@ -107,26 +102,25 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
                   }
               } 
               else {
-                  // >>>> CUSTOMER LOGIC (User Friendly) <<<<
                   if (statusLower === 'pending' && isNewBooking) {
-                       message = `Request Sent: Reservation submitted successfully.`;
-                       type = 'cust_pending';
-                       statusLabel = 'PENDING';
+                        message = `Request Sent: Reservation submitted successfully.`;
+                        type = 'cust_pending';
+                        statusLabel = 'PENDING';
                   } 
                   else if (['confirmed', 'approved'].includes(statusLower)) {
-                       message = `Approved: Your reservation request has been confirmed.`;
-                       type = 'cust_approved';
-                       statusLabel = 'APPROVED';
+                        message = `Approved: Your reservation request has been confirmed.`;
+                        type = 'cust_approved';
+                        statusLabel = 'APPROVED';
                   } 
                   else if (['cancelled', 'rejected', 'declined'].includes(statusLower)) {
-                       message = `Cancellation Alert: Reservation ${ref} has been cancelled.`;
-                       type = 'cust_cancelled';
-                       statusLabel = 'CANCELLED';
+                        message = `Cancellation Alert: Reservation ${ref} has been cancelled.`;
+                        type = 'cust_cancelled';
+                        statusLabel = 'CANCELLED';
                   } 
                   else if (['completed', 'check-out', 'checked-out'].includes(statusLower)) {
-                       message = `Thank you! Your stay is marked as completed.`;
-                       type = 'cust_completed';
-                       statusLabel = 'COMPLETED';
+                        message = `Thank you! Your stay is marked as completed.`;
+                        type = 'cust_completed';
+                        statusLabel = 'COMPLETED';
                   }
               }
 
@@ -134,11 +128,11 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
                 const newNotif = {
                   id: `notif_${transId}_${Date.now()}`,
                   type: type,
-                  statusLabel: statusLabel, // Added for UI
+                  statusLabel: statusLabel,
                   message: message,
                   transaction_id: transId,
-                  ref: ref, // Added for UI
-                  created_at: new Date().toISOString(),
+                  ref: ref, 
+                  created_at: transaction.updated_at || transaction.created_at || new Date().toISOString(),
                   isNew: true
                 };
                 
@@ -227,7 +221,6 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
     if (userId) localStorage.removeItem(`user_notifications_${userId}`);
   };
 
-  // --- UI HELPERS (DESIGN FROM FIRST CODE) ---
   const getNotificationIcon = (type) => {
     switch(type) {
       case 'cust_pending': return { icon: Clock, color: 'text-blue-600', bgColor: 'bg-blue-50' };
@@ -292,7 +285,7 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
               </button>
               <div className={`flex items-center gap-3 ${role === 'customer' ? 'cursor-pointer' : ''}`} onClick={() => role === 'customer' && navigate('/customer')}>
                 <img src="/images/Lp.png" alt="Logo" className="hidden md:block h-12 w-auto object-contain" />
-                <h1 className="text-lg md:text-xl text-gray-800 font-normal tracking-wide leading-tight">
+                <h1 className="text-lg md:text-xl text-gray-800 font-bold tracking-wide leading-tight">
                   La Piscina De Concepcion Resort
                 </h1>
               </div>
@@ -327,8 +320,7 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
                     <Bell size={20} />
                     {unreadCount > 0 && <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">{unreadCount}</span>}
                   </button>
-                  
-                  {/* DROPDOWN (DESIGN FROM FIRST CODE) */}
+            
                   {showNotifications && (
                     <div className="notification-dropdown absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                         
@@ -377,47 +369,47 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
                                  >
                                     {/* Icon */}
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${bgColor}`}>
-                                       <Icon size={18} className={color} />
+                                        <Icon size={18} className={color} />
                                     </div>
                                     
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
-                                       <p className={`text-sm leading-snug mb-1 ${n.isNew ? 'text-gray-900 font-bold' : 'text-gray-600 font-medium'}`}>
-                                         {n.message} <span className="text-gray-400 text-xs font-normal whitespace-nowrap ml-1">(Ref: {n.ref})</span>
-                                       </p>
-                                       
-                                       {/* Tag & Time Row */}
-                                       <div className="flex items-center justify-between mt-1.5">
-                                          {/* Status Tag */}
-                                          {n.statusLabel && (
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${getTagStyle(n.type)}`}>
-                                              {n.statusLabel}
-                                            </span>
-                                          )}
-
-                                          {/* Time & Action */}
-                                          <div className="flex items-center gap-2 ml-auto">
-                                            {/* Action Buttons */}
-                                            {role === 'receptionist' && n.type === 'recep_new_request' && (
-                                                <button 
-                                                  onClick={(e) => { e.stopPropagation(); setShowNotifications(false); if(setActiveTab) setActiveTab('reservations'); }}
-                                                  className="text-[10px] bg-white border border-gray-200 hover:border-orange-200 hover:text-orange-600 text-gray-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1"
-                                                >
-                                                  Review
-                                                </button>
-                                            )}
-                                            {role === 'customer' && n.type === 'cust_completed' && (
-                                                <button 
-                                                  onClick={(e) => { e.stopPropagation(); setShowNotifications(false); navigate('/feedback'); }}
-                                                  className="text-[10px] bg-white border border-gray-200 hover:border-orange-200 hover:text-orange-600 text-gray-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1"
-                                                >
-                                                  <MessageSquare size={10} /> Review
-                                                </button>
+                                        <p className={`text-sm leading-snug mb-1 ${n.isNew ? 'text-gray-900 font-bold' : 'text-gray-600 font-medium'}`}>
+                                          {n.message} <span className="text-gray-400 text-xs font-normal whitespace-nowrap ml-1">(Ref: {n.ref})</span>
+                                        </p>
+                                        
+                                        {/* Tag & Time Row */}
+                                        <div className="flex items-center justify-between mt-1.5">
+                                            {/* Status Tag */}
+                                            {n.statusLabel && (
+                                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${getTagStyle(n.type)}`}>
+                                                {n.statusLabel}
+                                              </span>
                                             )}
 
-                                            <span className="text-xs text-gray-400">{formatTimeAgo(n.created_at)}</span>
-                                          </div>
-                                       </div>
+                                            {/* Time & Action */}
+                                            <div className="flex items-center gap-2 ml-auto">
+                                              {/* Action Buttons */}
+                                              {role === 'receptionist' && n.type === 'recep_new_request' && (
+                                                  <button 
+                                                    onClick={(e) => { e.stopPropagation(); setShowNotifications(false); if(setActiveTab) setActiveTab('reservations'); }}
+                                                    className="text-[10px] bg-white border border-gray-200 hover:border-orange-200 hover:text-orange-600 text-gray-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1"
+                                                  >
+                                                    Review
+                                                  </button>
+                                              )}
+                                              {role === 'customer' && n.type === 'cust_completed' && (
+                                                  <button 
+                                                    onClick={(e) => { e.stopPropagation(); setShowNotifications(false); navigate('/feedback'); }}
+                                                    className="text-[10px] bg-white border border-gray-200 hover:border-orange-200 hover:text-orange-600 text-gray-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1"
+                                                  >
+                                                    <MessageSquare size={10} /> Review
+                                                  </button>
+                                              )}
+
+                                              <span className="text-xs text-gray-400">{formatTimeAgo(n.created_at)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     {/* Unread Dot */}
@@ -450,10 +442,9 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
 
               <div className="hidden lg:block text-right mr-2 border-l border-gray-300 pl-4">
                 <p className="text-sm font-normal text-gray-800">Hello, {user?.username || 'User'}!</p>
-                <p className="text-xs text-gray-500 capitalize font-normal">{role}</p>
               </div>
 
-              <button onClick={() => setShowLogoutConfirm(true)} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition text-sm font-normal shadow-sm">
+              <button onClick={() => setShowLogoutConfirm(true)} className="hidden lg:flex items-center gap-2 px-3 md:px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition text-sm font-normal shadow-sm">
                 <LogOut size={16} /> <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
@@ -480,11 +471,21 @@ const Header = ({ user, onLogout, activeTab, setActiveTab }) => {
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <h3 className="text-lg font-normal text-gray-900 mb-2">Confirm Logout</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Logout</h3>
             <p className="text-gray-600 text-sm mb-6 font-normal">Are you sure you want to logout?</p>
             <div className="flex gap-3">
-                <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-2 px-4 border rounded-lg hover:bg-gray-50 font-normal">Cancel</button>
-                <button onClick={confirmLogout} className="flex-1 py-2 px-4 bg-orange-500 text-white rounded-lg font-normal">Logout</button>
+              <button 
+                onClick={() => setShowLogoutConfirm(false)} 
+                className="flex-1 py-2 px-4 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white font-normal"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmLogout} 
+                className="flex-1 py-2 px-4 border border-lp-orange text-lp-orange hover:bg-lp-orange hover:text-white rounded-lg font-normal"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

@@ -30,12 +30,11 @@ const Footer = () => {
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10 items-start">
             
-            {/* 1. VISIT US */}
+            {/* VISIT US */}
             <div className="space-y-4">
               <h3 className="text-base md:text-lg font-bold text-lp-orange font-header uppercase tracking-wider">
                 Visit Us
               </h3>
-              {/* Updated text size to text-sm (14px) */}
               <div className="text-sm md:text-base space-y-3">
                 <div>
                   <p className="text-white font-semibold">Location</p>
@@ -55,7 +54,6 @@ const Footer = () => {
               <h3 className="text-base md:text-lg font-bold text-lp-orange font-header uppercase tracking-wider">
                 Explore
               </h3>
-              {/* Updated text size to text-sm */}
               <ul className="space-y-3 text-sm md:text-base">
                 <li><button onClick={() => handleNavigation('/customer')} className="hover:text-lp-orange text-left transition-colors">Home</button></li>
                 <li><button onClick={() => handleNavigation('/amenities')} className="hover:text-lp-orange text-left transition-colors">Amenities</button></li>
@@ -70,7 +68,6 @@ const Footer = () => {
               <h3 className="text-base md:text-lg font-bold text-lp-orange font-header uppercase tracking-wider">
                 Info
               </h3>
-              {/* Updated text size to text-sm */}
               <ul className="space-y-3 text-sm md:text-base">
                 <li><button onClick={() => openModal('about')} className="hover:text-lp-orange text-left transition-colors">About Us</button></li>
                 <li><button onClick={() => openModal('faq')} className="hover:text-lp-orange text-left transition-colors">FAQs</button></li>
@@ -78,12 +75,10 @@ const Footer = () => {
               </ul>
             </div>
 
-            {/* 4. HOURS & SOCIALS */}
             <div className="space-y-4">
               <h3 className="text-base md:text-lg font-bold text-lp-orange font-header uppercase tracking-wider">
                 Hours
               </h3>
-              {/* Updated text size to text-sm */}
               <div className="space-y-2 text-sm md:text-base">
                 <div className="flex justify-between max-w-[180px]">
                   <span>Mon-Thu</span>
@@ -113,9 +108,7 @@ const Footer = () => {
 
           </div>
 
-          {/* Copyright Section */}
           <div className="border-t border-gray-800 mt-10 pt-6 text-center">
-            {/* Updated copyright to text-xs (minimum readable size) or sm */}
             <p className="text-gray-500 text-xs sm:text-sm">
               © {new Date().getFullYear()} La Piscina De Conception Resort. All rights reserved.
             </p>
